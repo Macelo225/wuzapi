@@ -4,7 +4,13 @@ wuzapi
 .env
 .tool-versions
 
-# Added by Claude Task Master
+# Extracted files
+dinastiapi-extract/
+dinastiapi-static/
+
+# Claude
+.claude/
+
 # Logs
 logs
 *.log
@@ -12,9 +18,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 dev-debug.log
+
 # Dependency directories
 node_modules/
-# Environment variables
+
 # Editor directories and files
 .idea
 .vscode
@@ -23,12 +30,14 @@ node_modules/
 *.njsproj
 *.sln
 *.sw?
+
 # OS specific
 .DS_Store
+Thumbs.db
 
 # Task files
 tasks.json
-tasks/ 
+tasks/
 scripts/
 .roo/
 .cursor/

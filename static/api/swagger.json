@@ -1,0 +1,4418 @@
+{
+    "schemes": [
+        "http",
+        "https"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "Enterprise-grade WhatsApp Business API gateway with multi-user support, webhooks, RabbitMQ integration, and S3 storage",
+        "title": "DinastiAPI WhatsApp API Gateway",
+        "termsOfService": "https://github.com/guilhermejansen/use-dinastiapi/blob/main/LICENSE",
+        "contact": {
+            "name": "Guilherme Jansen",
+            "url": "https://github.com/DinastIA-UK/use-dinastiapi",
+            "email": "suporte@dinastiapi.com"
+        },
+        "license": {
+            "name": "Apache 2.0 License",
+            "url": "https://github.com/guilhermejansen/use-dinastiapi/blob/main/LICENSE"
+        },
+        "version": "1.2.4"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/admin/archive": {
+            "get": {
+                "description": "Retrieve all archived events including both DLQ (failed after max retries) and successfully delivered events. Supports filtering by status, transport, user, event type, and date range with pagination. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "List Event Archive",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status: 'dlq', 'success', or empty for all",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by transport name",
+                        "name": "transport",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by user ID",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by event type",
+                        "name": "event_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter from date (RFC3339 format)",
+                        "name": "from_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter to date (RFC3339 format)",
+                        "name": "to_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of events to return (default: 50, max: 1000)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of events to skip for pagination (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "description": "Permanently remove one or more events from the archive (DLQ or Success). This operation is irreversible. Supports single event deletion by ID or bulk deletion with filtering. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Delete Event Archive entries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Bulk deletion filters",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/archive/replay": {
+            "post": {
+                "description": "Re-enqueue one or more archived events (DLQ or Success) back into the processing pipeline for retry. Supports single event replay by ID or bulk replay with filtering. Use dry_run to preview affected events without replaying. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Replay Event Archive entries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Replay request parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/archive/stats": {
+            "get": {
+                "description": "Retrieve comprehensive statistics about the Event Archive including total count, success/DLQ breakdown, oldest/newest events by status, and distributions by transport and event type. Useful for monitoring system health and archive trends. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get Event Archive statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/archive/{id}": {
+            "get": {
+                "description": "Retrieve detailed information about a specific archived event (DLQ or Success) by ID. Includes full event payload, status, timestamps, and replay history. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get specific Event Archive entry",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Archive event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "description": "Permanently remove one or more events from the archive (DLQ or Success). This operation is irreversible. Supports single event deletion by ID or bulk deletion with filtering. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Delete Event Archive entries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Archive event ID (for single deletion)",
+                        "name": "id",
+                        "in": "path"
+                    },
+                    {
+                        "description": "Bulk deletion filters",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/dlq": {
+            "get": {
+                "description": "Retrieve events that failed after maximum retry attempts with optional filtering by transport, user, event type, and date range. Supports pagination for large result sets. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "List Dead Letter Queue events",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by transport name",
+                        "name": "transport",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by user ID",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by event type",
+                        "name": "event_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter from date (RFC3339 format)",
+                        "name": "from_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter to date (RFC3339 format)",
+                        "name": "to_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of events to return (default: 50, max: 1000)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of events to skip for pagination (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "description": "Permanently remove one or more events from the DLQ. This operation is irreversible. Supports single event deletion by ID or bulk deletion with filtering. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Delete Dead Letter Queue events",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Bulk deletion filters",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/dlq/prune": {
+            "post": {
+                "description": "Run the pruning routine immediately to clean processed and DLQ events without waiting for the scheduled interval.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Force event buffer prune",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/dlq/replay": {
+            "post": {
+                "description": "Re-enqueue one or more failed events from the DLQ back into the processing pipeline for retry. Supports single event replay by ID or bulk replay with filtering. Use dry_run to preview affected events without replaying. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Replay Dead Letter Queue events",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Replay request parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/dlq/stats": {
+            "get": {
+                "description": "Retrieve comprehensive statistics about the Dead Letter Queue including total count, oldest/newest events, and breakdowns by transport and event type. Useful for monitoring failed event patterns. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get Dead Letter Queue statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/dlq/{id}": {
+            "get": {
+                "description": "Retrieve detailed information about a specific event that failed after maximum retry attempts. Includes full event payload, error details, and retry history. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get specific Dead Letter Queue event",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "DLQ event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "description": "Permanently remove one or more events from the DLQ. This operation is irreversible. Supports single event deletion by ID or bulk deletion with filtering. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Delete Dead Letter Queue events",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "DLQ event ID (for single deletion)",
+                        "name": "id",
+                        "in": "path"
+                    },
+                    {
+                        "description": "Bulk deletion filters",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/global/config": {
+            "get": {
+                "description": "Retrieve current global configuration settings from environment variables including webhook, RabbitMQ, S3, and skip configurations. Also returns documentation about all available environment variables. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get global configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/global/config/reload": {
+            "post": {
+                "description": "Reload global system configuration from environment variables including webhook settings, RabbitMQ configuration, S3 storage settings, and event filtering preferences. This allows runtime configuration updates without restarting the service. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Reload global configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/global/event/test": {
+            "post": {
+                "description": "Send a test event through the global webhook and RabbitMQ systems to verify event delivery, test configurations, and validate system connectivity. The event will be processed by all configured global systems. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Send test event through global systems",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/global/stats": {
+            "get": {
+                "description": "Retrieve comprehensive statistics about the global webhook and RabbitMQ systems including event counts, delivery success rates, response times, connection status, and queue information. This provides insights into system performance and health. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get global system statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/global/test": {
+            "post": {
+                "description": "Test the connectivity and functionality of global webhook and RabbitMQ systems by sending test events and verifying delivery. This helps diagnose connection issues, configuration problems, and system health. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Test global systems connectivity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/users": {
+            "get": {
+                "description": "Retrieve a list of all DinastiAPI users with their complete configuration including connection status, webhook settings, proxy configuration, S3 storage, RabbitMQ messaging, and event filtering preferences. If a user ID is provided in the URL path, returns only that specific user's information. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "List all users or get specific user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Create a new DinastiAPI user account with complete configuration options including webhook, proxy, S3 storage, RabbitMQ messaging, and event filtering settings. The user will receive a unique ID and authentication token. All configuration options are optional and will use default values if not provided. Admin authentication required.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/users/{id}": {
+            "get": {
+                "description": "Retrieve a list of all DinastiAPI users with their complete configuration including connection status, webhook settings, proxy configuration, S3 storage, RabbitMQ messaging, and event filtering preferences. If a user ID is provided in the URL path, returns only that specific user's information. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "List all users or get specific user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "description": "Remove a DinastiAPI user account and all associated data including WhatsApp session, webhook configurations, S3 settings, RabbitMQ configurations, and event filtering preferences. This operation is irreversible and will disconnect any active WhatsApp sessions. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Delete a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/admin/users/{id}/full": {
+            "delete": {
+                "description": "Perform a complete deletion of a DinastiAPI user account including all data, WhatsApp session files, database records, webhook configurations, S3 settings, RabbitMQ configurations, and any associated media files. This is a destructive operation that removes all traces of the user from the system. Admin authentication required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Delete user completely",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin authorization token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/business/bot-profiles": {
+            "post": {
+                "description": "Get detailed profiles for specific bots. This allows you to get the detailed profiles for specific bots.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Get detailed profiles for specific bots",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/business/bots": {
+            "get": {
+                "description": "Get the list of available bots. This allows you to get the list of available bots.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Get the list of available bots",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/business/contact-qr": {
+            "post": {
+                "description": "Get the QR link for a contact. This allows you to get the QR link for a contact.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Get the QR link for a contact",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/business/order/send": {
+            "post": {
+                "description": "Send an order message to a business. This allows you to send an order message to a business.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Send an order message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/business/resolve-link": {
+            "post": {
+                "description": "Resolve a business message link to get business information.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Business"
+                ],
+                "summary": "Resolve a business message link",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/call/reject": {
+            "post": {
+                "description": "Send a custom call rejection message to a WhatsApp user or group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Call"
+                ],
+                "summary": "Send a custom call rejection message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/archive": {
+            "post": {
+                "description": "Archive or unarchive a chat to hide it from the main chat list. Archived chats are moved to the \"Archived\" folder and will reappear in the main list when a new message is received. You can optionally specify the last message information for proper synchronization. Set archive to true to archive or false to unarchive.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Archive or unarchive chat",
+                "responses": {}
+            }
+        },
+        "/chat/delete": {
+            "post": {
+                "description": "Delete a sent message from a chat. This feature allows you to delete messages you have sent, removing them from both your device and recipient devices. The message will show as \"This message was deleted\" to recipients. Only works for messages sent by the authenticated user. There may be a time limit for deletion depending on WhatsApp's policies.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Delete message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/delete-chat": {
+            "post": {
+                "description": "Delete a chat entirely from the chat list. This is different from clearing chat history - it removes the chat from your chat list completely. The chat will reappear if you receive a new message from this contact. Optionally provide the last message details for more precise deletion.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Delete chat from chat list",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/downloadaudio": {
+            "post": {
+                "description": "Download an audio file from a WhatsApp message and return it as base64 encoded data URL. You need to provide the media information from the received message including URL, media key, and file hashes. The audio is decrypted and returned as a data URL that can be directly used in HTML audio tags or saved to disk. Supports voice messages, audio files (MP3, M4A, OGG), and PTT (push-to-talk) messages.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Download audio from message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/downloaddocument": {
+            "post": {
+                "description": "Download a document from a WhatsApp message and return it as base64 encoded data URL. You need to provide the media information from the received message including URL, media key, and file hashes. The document is decrypted and returned as a data URL that can be directly used or saved to disk. Supports all document types including PDF, DOC, XLS, PPT, ZIP, etc.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Download document from message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/downloadimage": {
+            "post": {
+                "description": "Download an image from a WhatsApp message and return it as base64 encoded data URL. You need to provide the media information from the received message including URL, media key, and file hashes. The image is decrypted and returned as a data URL that can be directly used in HTML img tags or saved to disk.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Download image from message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/downloadsticker": {
+            "post": {
+                "description": "Download a sticker from a WhatsApp message and return it as base64 encoded data URL. You need to provide the media information from the received message including URL, media key, and file hashes. The sticker is decrypted and returned as a data URL (usually WebP format) that can be used directly or converted to other formats. Animated stickers are also supported.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Download sticker from message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/downloadvideo": {
+            "post": {
+                "description": "Download a video from a WhatsApp message and return it as base64 encoded data URL. You need to provide the media information from the received message including URL, media key, and file hashes. The video is decrypted and returned as a data URL that can be directly used in HTML video tags or saved to disk. Supports MP4, AVI, MOV, and other video formats.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Download video from message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/markread": {
+            "post": {
+                "description": "Mark one or more messages as read in a specific chat. This removes the unread badge and sends read receipts to the sender (if enabled in privacy settings). You must provide the chat JID, message IDs to mark as read, and optionally the sender JID for group messages. The operation updates the chat's unread count and last read message.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Mark messages as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/mute": {
+            "post": {
+                "description": "Mute or unmute notifications for a specific chat. When muted, you won't receive notifications for new messages in that chat. You can mute for 8 hours, 1 week, or always (until manually unmuted). Set mute to true with a duration to mute, or false to unmute. If no duration is specified when muting, it defaults to \"always\".",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Mute or unmute chat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/pin": {
+            "post": {
+                "description": "Pin or unpin a chat to keep it at the top of the chat list. Pinned chats appear at the top of the chat list for easy access. You can have up to 3 pinned chats on WhatsApp. Set pin to true to pin the chat or false to unpin it.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Pin or unpin chat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/presence": {
+            "post": {
+                "description": "Set chat presence status to indicate typing, recording audio, or paused state. This shows the \"typing...\" or \"recording audio...\" indicator to the recipient. The presence automatically clears after a few seconds, so you may need to send it periodically during long operations.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Set chat presence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/react": {
+            "post": {
+                "description": "Send a reaction emoji to a specific message. Use empty string or \"remove\" to remove a reaction. The reaction appears below the message for all participants. Common reactions include 👍, ❤️, 😂, 😮, 😢, 🙏. You must specify the message ID and whether it was sent by you (prefix with \"me:\") or received from others.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "React to message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/retry/message": {
+            "post": {
+                "description": "Retry processing of an incoming message that failed to process correctly, such as messages with \"Unknown-sender\" state. This endpoint searches for the message in recent cache and callback sources, then forces reprocessing by sending a retry receipt to the original sender. Particularly useful for recovering messages that were received but not properly decrypted or processed due to session issues, missing keys, or temporary connectivity problems. The system will attempt to decrypt and reprocess the message using current session state.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Retry failed incoming message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/audio": {
+            "post": {
+                "description": "Send an audio message or voice note to a WhatsApp contact or group. Supports various audio formats including MP3, OGG, AAC, and M4A. Can be sent as regular audio or PTT (Push To Talk) voice note. Audio can be provided as base64 data URL or HTTP(S) URL. Features include view-once messages, captions, replies, forwarding, and ephemeral messages. Audio is automatically processed and uploaded to configured S3 storage if available.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send audio message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"Z1234ABCDEF\"",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/buttons": {
+            "post": {
+                "description": "Send a message with interactive buttons to a phone number or group. This endpoint supports multiple button types including quick replies, URL links, phone calls, copy actions, and payment integrations (PIX). The message can include media attachments (images, videos, documents) and supports all message enhancements like mentions, replies, and forwarding.\nSend interactive message with up to 3 action buttons to a WhatsApp contact or group. Supports reply buttons, URL buttons, phone buttons, and PIX payment buttons. Can include optional media attachment (image, video, or document). Features include custom titles, footers, and ephemeral messages.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send buttons message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/carousel": {
+            "post": {
+                "description": "Send a carousel message with multiple cards to a phone number or group. Each card can contain images, videos, documents, text, and buttons.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send carousel message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/contact": {
+            "post": {
+                "description": "Send a contact card (vCard) to a WhatsApp contact or group. The vCard can include phone numbers, email addresses, organization details, and more. Supports vCard 3.0 format. The contact will be displayed as an interactive card that recipients can save to their address book. Features include replies, forwarding, and ephemeral messages.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send contact message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/document": {
+            "post": {
+                "description": "Send a document or file attachment to a phone number or group. Supports various file types including PDF, Word, Excel, PowerPoint, ZIP, and more. The document can be sent as a base64 data URL or HTTP(S) URL. Supports captions, mentions, replies, forwarding, and ephemeral messages. Media is automatically processed and uploaded to configured S3 storage if available.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send document message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"Z1234ABCCXD\"",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/edit": {
+            "post": {
+                "description": "Send an edited text message to a phone number or group. Supports mentions, replies, forwarding, and various message enhancements.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send edited text message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/event": {
+            "post": {
+                "description": "Send an event message to a phone number or group. This endpoint creates rich event invitations with scheduling, location, and call integration capabilities.\nSend calendar event invitation with date, time, location, and description to a WhatsApp contact or group. Recipients can add the event to their calendar. Features include replies, forwarding, and ephemeral messages.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send event message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/flow": {
+            "post": {
+                "description": "Send a native flow interactive message with custom parameters, supporting flow versioning and media headers.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send flow message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/image": {
+            "post": {
+                "description": "Send an image message to a WhatsApp contact or group. Supports JPEG, PNG, GIF, and WebP formats. Images can be sent as base64 data URLs or HTTP(S) URLs. Features include captions, view-once messages, mentions, replies, forwarding, and ephemeral messages. Large images are automatically compressed while maintaining quality. Images are automatically processed and uploaded to configured S3 storage if available.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send image message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"Z1234ABCDEF\"",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/link": {
+            "post": {
+                "description": "Send a text message with an automatic link preview from metadata. Supports captions, mentions, replies, and forwarding.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send link message with automatic preview",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/list": {
+            "post": {
+                "description": "Send a message with an interactive list to a phone number or group. This endpoint creates rich, structured lists perfect for product catalogs, service menus, restaurant menus, and interactive selections.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send list message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/location": {
+            "post": {
+                "description": "Send a location message to a WhatsApp contact or group with GPS coordinates. You can optionally include a location name and address for better context. The location will be displayed as an interactive map in WhatsApp. Features include replies, forwarding, and ephemeral messages.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send location message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/poll": {
+            "post": {
+                "description": "Send a poll with multiple choice options to a WhatsApp group or contact. Polls allow recipients to vote on options you provide. You can create polls with 2-12 options, and optionally allow multiple selections. Poll results are visible to all participants in real-time. Note: Polls are primarily designed for group chats.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send poll message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/ptv": {
+            "post": {
+                "description": "Send a PTV by link or base64 (data URL). Only requires phone and video.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send PTV (Pre-Recorded Transfer Video)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/sticker": {
+            "post": {
+                "description": "Send a sticker message to a WhatsApp contact or group. Stickers must be in WebP format with maximum dimensions of 512x512 pixels. Animated stickers are supported. Stickers can be sent as base64 data URLs or HTTP(S) URLs. Features include replies, forwarding, and ephemeral messages. Stickers are automatically processed and uploaded to configured S3 storage if available.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send sticker message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"Z1234ABCDEF\"",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/text": {
+            "post": {
+                "description": "Send a text message to a WhatsApp contact or group. Supports various features including link previews, mentions, replies, forwarding, typing simulation, and ephemeral messages. The message can include up to 4096 characters and supports Unicode, emojis, and formatting.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send text message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/send/video": {
+            "post": {
+                "description": "Send a video message to a WhatsApp contact or group. Supports MP4, AVI, MOV, and other common video formats. Videos can be sent as base64 data URLs or HTTP(S) URLs. Features include captions, view-once messages, mentions, replies, forwarding, and ephemeral messages. Large videos are automatically optimized for WhatsApp delivery.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send video message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/chat/star": {
+            "post": {
+                "description": "Star or unstar a message to save it for later reference. Starred messages can be easily found in the \"Starred Messages\" section. You must provide the chat JID, message ID, and whether the message was sent by you (from_me). For group messages, also provide the sender JID. Set star to true to star or false to unstar the message.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Star or unstar message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/community/announcement": {
+            "post": {
+                "description": "Send an announcement to a community. This allows you to send an announcement to a community.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Community"
+                ],
+                "summary": "Send an announcement to a community",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/community/create": {
+            "post": {
+                "description": "Create a new WhatsApp community. This allows you to create a new community group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Community"
+                ],
+                "summary": "Create a new WhatsApp community",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/community/link": {
+            "post": {
+                "description": "Link a group to a parent community. This allows you to create a community and link it to a group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Community"
+                ],
+                "summary": "Link a group to a parent community",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/community/linked": {
+            "get": {
+                "description": "Get all groups linked to a community. This allows you to get all groups that are linked to a community.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Community"
+                ],
+                "summary": "Get all groups linked to a community",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/community/requests": {
+            "get": {
+                "description": "Get pending group join requests. This allows you to get all pending join requests for a group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Community"
+                ],
+                "summary": "Get pending group join requests",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/community/requests/update": {
+            "post": {
+                "description": "Approve or reject group join requests. This allows you to approve or reject join requests for a group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Community"
+                ],
+                "summary": "Approve or reject group join requests",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/community/subgroups": {
+            "get": {
+                "description": "Get all sub-groups of a community. This allows you to get all sub-groups of a community.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Community"
+                ],
+                "summary": "Get all sub-groups of a community",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/community/unlink": {
+            "post": {
+                "description": "Unlink a group from its parent community. This allows you to remove a group from a community.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Community"
+                ],
+                "summary": "Unlink a group from its parent community",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/device/linked": {
+            "get": {
+                "description": "Get the current user's linked devices. This allows you to get the current user's linked devices.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Device"
+                ],
+                "summary": "Get current user's linked devices",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/device/list": {
+            "post": {
+                "description": "Get the list of devices for a user. This allows you to get the list of devices for a user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Device"
+                ],
+                "summary": "Get user devices",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/device/list/context": {
+            "post": {
+                "description": "Get the list of devices for a user with context. This allows you to get the list of devices for a user with context.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Device"
+                ],
+                "summary": "Get user devices with context",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/device/platform": {
+            "post": {
+                "description": "Get the platform name for a device ID. This allows you to get the platform name for a device ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Device"
+                ],
+                "summary": "Get device platform",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/announce": {
+            "post": {
+                "description": "Configure whether only admins can send messages in the group (announce mode). When enabled, only admins can send messages; all members can still read messages.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Set group announce mode",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/create": {
+            "post": {
+                "description": "Create a new WhatsApp group with initial participants. The authenticated user will automatically become the group creator and super admin.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Create a new group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/ephemeral": {
+            "post": {
+                "description": "Configure disappearing messages (ephemeral) for a WhatsApp group. Messages will automatically disappear after the specified duration.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Set disappearing messages timer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/info": {
+            "get": {
+                "description": "Get comprehensive information about a WhatsApp group including metadata, participants, settings, and configuration. Requires the user to be a member of the group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Get group information",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group JID (format: 123456789012345@g.us)",
+                        "name": "groupJID",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/inviteinfo": {
+            "post": {
+                "description": "Get information about a WhatsApp group using its invite code without joining the group. Useful for previewing group details before joining.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Get group info from invite link",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/invitelink": {
+            "get": {
+                "description": "Get the invite link for a WhatsApp group. Only group admins can retrieve or reset the invite link. The link can be used by anyone to join the group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Get group invite link",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group JID (format: 123456789012345@g.us)",
+                        "name": "groupJID",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Reset and generate a new invite link (default: false)",
+                        "name": "reset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/join": {
+            "post": {
+                "description": "Join a WhatsApp group using an invite code. The invite code is the part after 'chat.whatsapp.com/' in the invite link.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Join group via invite link",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/leave": {
+            "post": {
+                "description": "Leave a WhatsApp group. Any user can leave a group they are a member of. If the user is the only admin, they should promote another member before leaving.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Leave a group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/list": {
+            "get": {
+                "description": "Get a comprehensive list of all WhatsApp groups where the authenticated user is a participant. This endpoint returns detailed information about each group including name, participants, settings, and metadata. Use the ignoreParticipants parameter to improve performance when participant details are not needed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "List all groups",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Exclude participant details from response for better performance (default: false)",
+                        "name": "ignoreParticipants",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/locked": {
+            "post": {
+                "description": "Control whether only admins can edit group information (name, photo, description). When locked, only admins can make changes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Lock/unlock group info editing",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/name": {
+            "post": {
+                "description": "Update the name of a WhatsApp group. The name must be between 1 and 100 characters. Only group admins can change the name.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Set group name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/photo": {
+            "post": {
+                "description": "Set or update the profile photo of a WhatsApp group. The image must be in JPEG format and provided as a base64 data URL. Only group admins can set the photo.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Set group photo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/photo/remove": {
+            "post": {
+                "description": "Remove the profile photo of a WhatsApp group. Only group admins can remove the group photo.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Remove group photo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/topic": {
+            "post": {
+                "description": "Update the topic (description) of a WhatsApp group. The topic can be up to 512 characters. Only group admins can change the topic.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Set group topic/description",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/group/updateparticipants": {
+            "post": {
+                "description": "Add, remove, promote or demote group participants. Admin privileges required for all operations except leaving the group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Group"
+                ],
+                "summary": "Manage group participants",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Check the health of the server. This allows you to check the health of the server.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Check the health of the server",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.HealthCheckResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/main.HealthCheckResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/label/chat": {
+            "post": {
+                "description": "Apply or remove a label from a specific chat conversation. This allows you to categorize your chats with custom labels for better organization. You can apply multiple labels to a single chat. Set apply to true to add the label or false to remove it.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Apply or remove label from chat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/label/manage": {
+            "post": {
+                "description": "Create new labels, edit existing labels, or delete labels. Labels are used to organize chats and messages with custom categories. Each label has a name, color, and unique ID. You can create custom labels to categorize your conversations and messages for better organization.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Manage labels (create, edit, delete)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/label/message": {
+            "post": {
+                "description": "Apply or remove a label from a specific message. This allows you to categorize individual messages with custom labels for better organization and searching. You can apply multiple labels to a single message. Set apply to true to add the label or false to remove it.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Apply or remove label from message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/accept-tos": {
+            "post": {
+                "description": "Accept a terms of service notice. This allows you to accept a terms of service notice.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Accept a terms of service notice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/admin-invite": {
+            "post": {
+                "description": "Send admin invite to newsletter. This allows you to send admin invite to newsletter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Send admin invite to newsletter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/create": {
+            "post": {
+                "description": "Create a new channel/newsletter on WhatsApp. This allows you to create a new channel/newsletter on WhatsApp.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Create a new channel/newsletter on WhatsApp",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/info/{newsletterID}": {
+            "get": {
+                "description": "Get information about a specific newsletter. This allows you to get information about a specific newsletter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Get information about a specific newsletter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Newsletter ID",
+                        "name": "newsletterID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/list": {
+            "get": {
+                "description": "List all subscribed newsletters. This allows you to list all subscribed newsletters.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "List all subscribed newsletters",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/mark-viewed": {
+            "post": {
+                "description": "Mark newsletter messages as viewed. This allows you to mark newsletter messages as viewed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Mark newsletter messages as viewed",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/messages/{newsletterID}": {
+            "get": {
+                "description": "Get messages of a newsletter. This allows you to get messages of a newsletter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Get messages of a newsletter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Newsletter ID",
+                        "name": "newsletterID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/mute": {
+            "post": {
+                "description": "Mute/unmute notifications of a newsletter. This allows you to mute/unmute notifications of a newsletter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Mute/unmute notifications of a newsletter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/reaction": {
+            "post": {
+                "description": "Send reaction to newsletter message. This allows you to send reaction to newsletter message.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Send reaction to newsletter message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/send": {
+            "post": {
+                "description": "Send message to newsletter. This allows you to send message to newsletter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Send message to newsletter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/subscribe-live-updates": {
+            "post": {
+                "description": "Subscribe to live updates of a newsletter. This allows you to subscribe to live updates of a newsletter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Subscribe to live updates of a newsletter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/subscribe/invite/{newsletterInviteCode}": {
+            "post": {
+                "description": "Subscribe to a newsletter using invite code. This allows you to subscribe to a newsletter using invite code.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Subscribe to a newsletter using invite code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Newsletter invite code",
+                        "name": "newsletterInviteCode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/subscribe/{newsletterID}": {
+            "post": {
+                "description": "Subscribe to a newsletter. This allows you to subscribe to a newsletter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Subscribe to a newsletter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Newsletter ID",
+                        "name": "newsletterID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/unsubscribe/invite/{newsletterInviteCode}": {
+            "post": {
+                "description": "Unsubscribe from a newsletter using invite code. This allows you to unsubscribe from a newsletter using invite code.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Unsubscribe from a newsletter using invite code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Newsletter invite code",
+                        "name": "newsletterInviteCode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/unsubscribe/{newsletterID}": {
+            "post": {
+                "description": "Unsubscribe from a newsletter. This allows you to unsubscribe from a newsletter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Unsubscribe from a newsletter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Newsletter ID",
+                        "name": "newsletterID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/newsletter/updates": {
+            "get": {
+                "description": "Get updates of newsletter messages. This allows you to get updates of newsletter messages.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Newsletter"
+                ],
+                "summary": "Get updates of newsletter messages",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/privacy/blocklist": {
+            "get": {
+                "description": "Retrieve the list of all blocked contacts for the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Privacy"
+                ],
+                "summary": "Get blocklist",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Block or unblock one or more contacts.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Privacy"
+                ],
+                "summary": "Update blocklist",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/privacy/disappearing-timer": {
+            "post": {
+                "description": "Set the default disappearing message timer for new chats.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Privacy"
+                ],
+                "summary": "Set default disappearing timer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/privacy/settings": {
+            "get": {
+                "description": "Retrieve the current WhatsApp privacy settings for the authenticated user including last seen, profile photo, status, and group permissions",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Privacy"
+                ],
+                "summary": "Get privacy settings",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Update a specific privacy setting for the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Privacy"
+                ],
+                "summary": "Update a privacy setting",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/privacy/status": {
+            "get": {
+                "description": "Get the current status privacy configuration for the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Privacy"
+                ],
+                "summary": "Get status privacy",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/connect": {
+            "post": {
+                "description": "Establish a connection to WhatsApp WebSocket. Can subscribe to specific events or all events if none specified.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Connect to WhatsApp",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/disconnect": {
+            "post": {
+                "description": "Disconnect from WhatsApp WebSocket without logging out the device. The session remains authenticated.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Disconnect from WhatsApp",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/echo/api": {
+            "get": {
+                "description": "Retrieves whether API message echo is enabled for this session",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Get API message echo configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Controls whether messages sent via this API should emit Message events through the standard pipeline",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Enable or disable API message echo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/logout": {
+            "post": {
+                "description": "Logout from WhatsApp completely. This will require scanning QR code again for next connection.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Logout from WhatsApp",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/pairphone": {
+            "post": {
+                "description": "Get a pairing code to authenticate using phone number instead of QR code",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Pair by phone number",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/proxy": {
+            "post": {
+                "description": "Configure proxy settings for WhatsApp connection. Supports HTTP and SOCKS5 proxies. Cannot be changed while connected.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Set proxy configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/qr": {
+            "get": {
+                "description": "Get the QR code string for WhatsApp Web authentication. The QR code expires after a certain time.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Get QR code for authentication",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/rabbitmq/config": {
+            "get": {
+                "description": "Retrieve the current RabbitMQ configuration and queue statistics. Connection URL is masked for security.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Get RabbitMQ configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Configure RabbitMQ messaging settings for event publishing. Supports topic, direct, fanout, and headers exchange types. Events can be filtered by type.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Configure RabbitMQ",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "description": "Remove RabbitMQ configuration and close active connections",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Delete RabbitMQ configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/rabbitmq/test": {
+            "post": {
+                "description": "Test the RabbitMQ connection and publish a test message. Verifies exchange, queue, and routing configuration.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Test RabbitMQ connection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/refresh": {
+            "post": {
+                "description": "Refresh the WhatsApp connection without requiring a new QR scan. Only works if device is already paired.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Refresh WhatsApp connection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/s3/config": {
+            "get": {
+                "description": "Retrieve the current S3 storage configuration for the authenticated user. Sensitive data like access keys are masked for security.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Get S3 configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Configure S3 storage settings for media upload/download. Supports AWS S3, MinIO, and other S3-compatible storage providers.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Configure S3 storage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "description": "Remove S3 storage configuration for the authenticated user and revert to base64 media delivery",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Delete S3 configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/s3/test": {
+            "post": {
+                "description": "Test the S3 connection using the current configuration. Verifies bucket access and permissions.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Test S3 connection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/skip/broadcasts": {
+            "get": {
+                "description": "Retrieve the current skip broadcasts configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Get skip broadcasts configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Enable or disable receiving broadcast messages. When enabled, broadcast messages will not trigger webhooks.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Configure skip broadcasts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/skip/calls": {
+            "get": {
+                "description": "Retrieve the current skip calls configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Get skip calls configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Enable or disable receiving call messages. When enabled, call messages will not trigger webhooks.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Configure skip calls",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/skip/groups": {
+            "get": {
+                "description": "Retrieve the current skip groups configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Get skip groups configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Enable or disable receiving messages from groups. When enabled, group messages will not trigger webhooks or be stored.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Configure skip groups",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/skip/media": {
+            "get": {
+                "description": "Retrieve the current skip media download configuration for the user and global settings",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Get skip media download configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Enable or disable automatic media download. When enabled, media files will not be downloaded automatically and only metadata will be received.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Configure skip media download",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/skip/newsletters": {
+            "get": {
+                "description": "Retrieve the current skip newsletters configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Get skip newsletters configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Enable or disable receiving newsletter/channel messages. When enabled, newsletter messages will not trigger webhooks.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Configure skip newsletters",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/skip/own-messages": {
+            "get": {
+                "description": "Retrieve the current skip own messages configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Get skip own messages configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Enable or disable receiving own messages. When enabled, own messages will not trigger webhooks.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Configure skip own messages",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/session/status": {
+            "get": {
+                "description": "Get the current WhatsApp connection status including connected state, logged in state, and device information",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "Get connection status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/status/send/audio": {
+            "post": {
+                "description": "Send an audio status message to a WhatsApp user or group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Status"
+                ],
+                "summary": "Send an audio status message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/status/send/image": {
+            "post": {
+                "description": "Send an image status message to a WhatsApp user or group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Status"
+                ],
+                "summary": "Send an image status message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/status/send/text": {
+            "post": {
+                "description": "Send a text status message to a WhatsApp user or group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Status"
+                ],
+                "summary": "Send a text status message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/status/send/video": {
+            "post": {
+                "description": "Send a video status message to a WhatsApp user or group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Status"
+                ],
+                "summary": "Send a video status message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/user/avatar": {
+            "post": {
+                "description": "Retrieve profile picture information for a WhatsApp user. Can return either full size or preview/thumbnail.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get user avatar",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/user/contacts": {
+            "get": {
+                "description": "Retrieve the complete list of contacts stored in the WhatsApp account. Returns contact information including names and business details.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get all contacts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/user/contacts/business": {
+            "post": {
+                "description": "Retrieve comprehensive business profile data including operating hours, categories, and contact information for a WhatsApp Business account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get business profile information",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/user/contacts/exists": {
+            "post": {
+                "description": "Verify if one or more phone numbers have WhatsApp accounts. Returns information about each number including verification status and business details.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Check if users are on WhatsApp",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/user/info": {
+            "post": {
+                "description": "Retrieve detailed information about one or more WhatsApp users including profile data, devices, and business verification status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get user information",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/user/presence": {
+            "post": {
+                "description": "Update the user's global WhatsApp presence status (available/unavailable). This affects whether you appear online to your contacts.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Set presence status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/user/profile/about": {
+            "post": {
+                "description": "Update the user's WhatsApp status message (about). Maximum 139 characters.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Set status message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/user/profile/pushname": {
+            "post": {
+                "description": "Update the user's WhatsApp display name (push name). This is the name that appears when you send messages to others.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Change push name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/user/profile/status": {
+            "get": {
+                "description": "Retrieve the current WhatsApp status message (about) for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get current status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/webhook": {
+            "get": {
+                "description": "Retrieve the current webhook URL and subscribed events for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Webhook"
+                ],
+                "summary": "Get webhook configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "put": {
+                "description": "Update the webhook URL, events, and activation status for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Webhook"
+                ],
+                "summary": "Update webhook configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "description": "Configure a webhook URL and subscribe to specific events for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Webhook"
+                ],
+                "summary": "Set webhook configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "description": "Remove the webhook URL and clear all subscribed events for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Webhook"
+                ],
+                "summary": "Delete webhook configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User authentication token",
+                        "name": "token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        }
+    },
+    "definitions": {
+        "main.HealthBuildInfo": {
+            "type": "object",
+            "properties": {
+                "commit": {
+                    "type": "string",
+                    "example": "a1b2c3d4"
+                }
+            }
+        },
+        "main.HealthCheckMetrics": {
+            "type": "object",
+            "properties": {
+                "cpu_count": {
+                    "type": "integer",
+                    "example": 8
+                },
+                "go_max_procs": {
+                    "type": "integer",
+                    "example": 8
+                },
+                "go_version": {
+                    "type": "string",
+                    "example": "go1.21.5"
+                },
+                "goroutines": {
+                    "type": "integer",
+                    "example": 42
+                }
+            }
+        },
+        "main.HealthCheckResponse": {
+            "type": "object",
+            "properties": {
+                "build": {
+                    "$ref": "#/definitions/main.HealthBuildInfo"
+                },
+                "code": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "data": {
+                    "type": "string",
+                    "example": "OK"
+                },
+                "environment": {
+                    "$ref": "#/definitions/main.HealthEnvironmentMetadata"
+                },
+                "metrics": {
+                    "$ref": "#/definitions/main.HealthCheckMetrics"
+                },
+                "services": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/main.HealthServiceStatus"
+                    }
+                },
+                "status": {
+                    "type": "string",
+                    "example": "healthy"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "timestamp": {
+                    "type": "string",
+                    "example": "2024-01-01T12:00:00Z"
+                },
+                "uptime": {
+                    "type": "integer",
+                    "example": 86400
+                },
+                "version": {
+                    "type": "string",
+                    "example": "3.0.0"
+                }
+            }
+        },
+        "main.HealthEnvironmentMetadata": {
+            "type": "object",
+            "properties": {
+                "app_env": {
+                    "type": "string",
+                    "example": "production"
+                },
+                "app_region": {
+                    "type": "string",
+                    "example": "us-east-1"
+                },
+                "containerized": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "hostname": {
+                    "type": "string",
+                    "example": "dinastiapi-01"
+                }
+            }
+        },
+        "main.HealthServiceStatus": {
+            "type": "object",
+            "properties": {
+                "driver": {
+                    "type": "string",
+                    "example": "postgres"
+                },
+                "error": {
+                    "type": "string",
+                    "example": "database not configured"
+                },
+                "idle": {
+                    "type": "integer",
+                    "example": 8
+                },
+                "in_use": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "latency_ms": {
+                    "type": "number",
+                    "example": 12.5
+                },
+                "open_connections": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "status": {
+                    "type": "string",
+                    "example": "up"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "AdminAuth": {
+            "description": "Admin authentication token. Must match DINASTIAPI_ADMIN_TOKEN environment variable.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        },
+        "UserAuth": {
+            "description": "User authentication token. Can also be passed as query parameter.",
+            "type": "apiKey",
+            "name": "token",
+            "in": "header"
+        }
+    },
+    "tags": [
+        {
+            "description": "Administrative functions for user management and global statistics",
+            "name": "Admin"
+        },
+        {
+            "description": "WhatsApp session management including connection, QR code, and status",
+            "name": "Session"
+        },
+        {
+            "description": "Chat operations including sending messages, media, and managing conversations",
+            "name": "Chat"
+        },
+        {
+            "description": "User profile management and contact operations",
+            "name": "User"
+        },
+        {
+            "description": "WhatsApp group management and operations",
+            "name": "Group"
+        },
+        {
+            "description": "WhatsApp community features and administration",
+            "name": "Community"
+        },
+        {
+            "description": "Newsletter and channel management features",
+            "name": "Newsletter"
+        },
+        {
+            "description": "Privacy settings and security controls",
+            "name": "Privacy"
+        },
+        {
+            "description": "Business account features and bot management",
+            "name": "Business"
+        },
+        {
+            "description": "Device information and management",
+            "name": "Device"
+        },
+        {
+            "description": "Webhook configuration and management",
+            "name": "Webhook"
+        }
+    ]
+}

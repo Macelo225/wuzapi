@@ -103,6 +103,24 @@ func (s *server) routes() {
 	s.router.Handle("/session/hmac/config", c.Then(s.GetHmacConfig())).Methods("GET")
 	s.router.Handle("/session/hmac/config", c.Then(s.DeleteHmacConfig())).Methods("DELETE")
 
+	s.router.Handle("/session/settings", c.Then(s.ConfigureSessionSettings())).Methods("POST")
+	s.router.Handle("/session/settings", c.Then(s.GetSessionSettings())).Methods("GET")
+	s.router.Handle("/session/settings", c.Then(s.DeleteSessionSettings())).Methods("DELETE")
+
+	// Compatibility endpoints for dinastiapi dashboard
+	s.router.Handle("/session/skipmedia/config", c.Then(s.GetSkipMediaConfig())).Methods("GET")
+	s.router.Handle("/session/skipmedia/config", c.Then(s.SetSkipMediaConfig())).Methods("POST")
+	s.router.Handle("/session/skipgroups/config", c.Then(s.GetSkipGroupsConfig())).Methods("GET")
+	s.router.Handle("/session/skipgroups/config", c.Then(s.SetSkipGroupsConfig())).Methods("POST")
+	s.router.Handle("/session/skipnewsletters/config", c.Then(s.GetSkipNewslettersConfig())).Methods("GET")
+	s.router.Handle("/session/skipnewsletters/config", c.Then(s.SetSkipNewslettersConfig())).Methods("POST")
+	s.router.Handle("/session/skipbroadcasts/config", c.Then(s.GetSkipBroadcastsConfig())).Methods("GET")
+	s.router.Handle("/session/skipbroadcasts/config", c.Then(s.SetSkipBroadcastsConfig())).Methods("POST")
+	s.router.Handle("/session/skipownmessages/config", c.Then(s.GetSkipOwnMessagesConfig())).Methods("GET")
+	s.router.Handle("/session/skipownmessages/config", c.Then(s.SetSkipOwnMessagesConfig())).Methods("POST")
+	s.router.Handle("/session/skipcalls/config", c.Then(s.GetSkipCallsConfig())).Methods("GET")
+	s.router.Handle("/session/skipcalls/config", c.Then(s.SetSkipCallsConfig())).Methods("POST")
+
 	s.router.Handle("/chat/send/text", c.Then(s.SendMessage())).Methods("POST")
 	s.router.Handle("/chat/delete", c.Then(s.DeleteMessage())).Methods("POST")
 	s.router.Handle("/chat/send/image", c.Then(s.SendImage())).Methods("POST")

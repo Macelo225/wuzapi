@@ -1,9 +1,3 @@
-// Groups Manager JavaScript
-// Manages all WhatsApp groups functionality
-// 
-// ADMIN PERMISSIONS: Modified to always show admin actions and let backend handle permissions
-// This ensures all group management features are visible to users
-
 let groupsCache = {};
 let contactsCache = {};
 let currentGroupId = null;
@@ -2230,4 +2224,28 @@ async function leaveGroupAPI(groupJID) {
         data: data.data,
         error: data.error || data.message
     };
+}
+
+// Utility function to safely handle dropdown values (if not already defined in app.js)
+function safeGetDropdownValues(dropdownValue) {
+  let result = [];
+  try {
+    if (dropdownValue) {
+      if (Array.isArray(dropdownValue)) {
+        result = dropdownValue.filter(v => v && typeof v === 'string' && v.trim() !== '');
+      } else if (typeof dropdownValue === 'string') {
+        result = dropdownValue.split(',').filter(v => v && v.trim() !== '');
+      } else if (dropdownValue !== null && dropdownValue !== undefined) {
+        // Handle any other type by converting to string first
+        const strValue = String(dropdownValue).trim();
+        if (strValue) {
+          result = [strValue];
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error processing dropdown values:', error, 'Input:', dropdownValue);
+    result = [];
+  }
+  return result;
 } 

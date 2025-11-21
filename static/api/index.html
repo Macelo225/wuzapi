@@ -1,60 +1,1388 @@
 <!-- HTML for static distribution bundle build -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>WUZAPI API</title>
-    <link rel="stylesheet" type="text/css" href="./swagger-ui.css" />
-    <link
-      rel="icon"
-      type="image/png"
-      href="./favicon-32x32.png"
-      sizes="32x32"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      href="./favicon-16x16.png"
-      sizes="16x16"
-    />
-    <style>
-      html {
-        box-sizing: border-box;
-        overflow: -moz-scrollbars-vertical;
-        overflow-y: scroll;
-      }
+    <head>
+        <meta charset="UTF-8" />
+        <title>WuzAPI</title>
+        <link rel="stylesheet" type="text/css" href="./swagger-ui.css" />
+        <link
+            rel="icon"
+            type="image/png"
+            href="./favicon-32x32.png"
+            sizes="32x32"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            href="./favicon-16x16.png"
+            sizes="16x16"
+        />
+        <style>
+            html {
+                box-sizing: border-box;
+                overflow: -moz-scrollbars-vertical;
+                overflow-y: scroll;
+            }
 
-      *,
-      *:before,
-      *:after {
-        box-sizing: inherit;
-      }
+            *,
+            *:before,
+            *:after {
+                box-sizing: inherit;
+            }
 
-      body {
-        margin: 0;
-        background: #fafafa;
-      }
-    </style>
-  </head>
+            body {
+                margin: 0;
+                background: #fafafa;
+            }
 
-  <body>
-    <div id="swagger-ui"></div>
+            .swagger-ui .topbar {
+                background-color: #2c3e50;
+                padding: 10px 0;
+            }
 
-    <script src="./swagger-ui-bundle.js"></script>
-    <script src="./swagger-ui-standalone-preset.js"></script>
-    <script>
-      window.onload = function() {
-        // Begin Swagger UI call region
-        const ui = SwaggerUIBundle({
-          url: "./spec.yml",
-          dom_id: "#swagger-ui",
-          deepLinking: true,
-          presets: [SwaggerUIBundle.presets.apis],
-        });
-        // End Swagger UI call region
+            .swagger-ui .topbar .download-url-wrapper {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
 
-        window.ui = ui;
-      };
-    </script>
-  </body>
+            .swagger-ui .topbar .download-url-wrapper .select-label {
+                color: white;
+                font-weight: bold;
+                margin-right: 10px;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper select {
+                background: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 10px;
+                margin-right: 10px;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .btn {
+                background: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                cursor: pointer;
+                text-decoration: none;
+                font-size: 14px;
+                margin-right: 10px;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .btn:hover {
+                background: #229954;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .btn.postman {
+                background: #ff6c37;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .btn.postman:hover {
+                background: #e55a2b;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .btn.swagger {
+                background: #85ea2d;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .btn.swagger:hover {
+                background: #6bc924;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .status-indicator {
+                color: #85ea2d;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 4px 8px;
+                background: rgba(133, 234, 45, 0.1);
+                border-radius: 4px;
+                border: 1px solid #85ea2d;
+                margin-right: 15px;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .download-section {
+                display: inline-flex;
+                gap: 8px;
+                margin-right: 15px;
+                padding: 4px;
+                border-radius: 6px;
+                background: rgba(255, 255, 255, 0.1);
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .info-section {
+                display: inline-flex;
+                gap: 8px;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .btn.primary {
+                background: #27ae60 !important;
+                font-weight: bold;
+                box-shadow: 0 2px 4px rgba(39, 174, 96, 0.3);
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .btn.secondary {
+                background: #7f8c8d !important;
+                opacity: 0.9;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .btn.spec {
+                background: #3498db !important;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .btn.info {
+                background: #9b59b6 !important;
+                padding: 6px 12px !important;
+                font-size: 12px !important;
+            }
+
+            .swagger-ui .topbar .download-url-wrapper .btn:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                transition: all 0.2s ease;
+            }
+        </style>
+    </head>
+
+    <body>
+        <!-- Custom topbar for download buttons -->
+        <div
+            class="custom-topbar"
+            style="
+                background: #2c3e50;
+                padding: 15px 20px;
+                color: white;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 2px solid #34495e;
+            "
+        >
+            <div style="font-size: 18px; font-weight: bold">
+                🚀 DINASTIAPI API v1.2.6
+                <span
+                    style="
+                        background: #27ae60;
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        font-size: 12px;
+                        margin-left: 10px;
+                    "
+                >
+                    OpenAPI 3.0
+                </span>
+            </div>
+
+            <div
+                class="download-buttons"
+                style="display: flex; gap: 15px; align-items: center"
+            >
+                <button
+                    onclick="downloadPostmanFromOpenAPI()"
+                    style="
+                        background: #27ae60;
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        padding: 12px 24px;
+                        cursor: pointer;
+                        font-weight: bold;
+                        font-size: 14px;
+                        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+                        transition: all 0.2s ease;
+                    "
+                    onmouseover="this.style.background='#229954'; this.style.transform='translateY(-2px)'"
+                    onmouseout="this.style.background='#27ae60'; this.style.transform='translateY(0)'"
+                    title="Download complete Postman collection with all endpoints and examples"
+                >
+                    📦 Complete Postman Collection
+                </button>
+
+                <a
+                    href="./spec.yml"
+                    download="dinastiapi-openapi3.yml"
+                    style="
+                        background: #3498db;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        padding: 8px 16px;
+                        text-decoration: none;
+                        font-size: 12px;
+                    "
+                    title="Download OpenAPI 3.0 specification"
+                >
+                    📄 OpenAPI Spec
+                </a>
+
+                <button
+                    onclick="showSpecInfo()"
+                    style="
+                        background: #9b59b6;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        padding: 8px 16px;
+                        cursor: pointer;
+                        font-size: 12px;
+                    "
+                    title="Show API information"
+                >
+                    ℹ️ Info
+                </button>
+
+                <span
+                    id="status-indicator"
+                    style="
+                        color: #27ae60;
+                        font-size: 12px;
+                        font-weight: bold;
+                        padding: 6px 12px;
+                        background: rgba(39, 174, 96, 0.1);
+                        border-radius: 4px;
+                        border: 1px solid #27ae60;
+                    "
+                >
+                    ✅ Ready
+                </span>
+            </div>
+        </div>
+
+        <div id="swagger-ui"></div>
+
+        <script src="./swagger-ui-bundle.js" charset="UTF-8"></script>
+        <script
+            src="./swagger-ui-standalone-preset.js"
+            charset="UTF-8"
+        ></script>
+        <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+        <script>
+            // 🚀 DINASTIAPI COMPLETE API DOCUMENTATION SYSTEM
+            // Primary Source: OpenAPI 3.0 (spec.yml) - Complete and Modern
+
+            let currentSpec = null;
+            let specType = "openapi3";
+            let specLoaded = false;
+
+            // 🆔 Generate UUID for Postman collections
+            function generateUUID() {
+                return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+                    /[xy]/g,
+                    function (c) {
+                        const r = (Math.random() * 16) | 0;
+                        const v = c === "x" ? r : (r & 0x3) | 0x8;
+                        return v.toString(16);
+                    },
+                );
+            }
+
+            // 📊 Convert OpenAPI 3.0 to comprehensive Postman Collection
+            function openAPI3ToPostman(openapi) {
+                console.log(
+                    "🔄 Converting OpenAPI 3.0 to Postman Collection...",
+                );
+
+                const collection = {
+                    info: {
+                        _postman_id: generateUUID(),
+                        name: `${openapi.info.title} v${openapi.info.version}`,
+                        description: `${openapi.info.description}\n\n🔗 **Generated from OpenAPI 3.0 Specification**\n📅 Generated: ${new Date().toLocaleString()}\n🚀 Complete API collection with all endpoints\n\n**Authentication:**\n- Standard Endpoints: Use {{api_token}} header\n- Admin Endpoints: Use {{admin_token}} header\n\n**Variables:**\n- {{base_url}} - API base URL\n- {{api_token}} - Your user authentication token\n- {{admin_token}} - Admin authentication token`,
+                        schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+                    },
+                    auth: {
+                        type: "apikey",
+                        apikey: [
+                            { key: "key", value: "token", type: "string" },
+                            {
+                                key: "value",
+                                value: "{{api_token}}",
+                                type: "string",
+                            },
+                            { key: "in", value: "header", type: "string" },
+                        ],
+                    },
+                    variable: [
+                        {
+                            key: "base_url",
+                            value: "http://localhost:8080",
+                            type: "string",
+                            description: "🌐 DinastiAPI API Base URL",
+                        },
+                        {
+                            key: "api_token",
+                            value: "Z1234ABCDEF",
+                            type: "string",
+                            description:
+                                "🔑 User Authentication Token (get from /admin/users)",
+                        },
+                        {
+                            key: "admin_token",
+                            value: "admin_token_here",
+                            type: "string",
+                            description:
+                                "🔐 Admin Token (set in DINASTIAPI_ADMIN_TOKEN env)",
+                        },
+                        {
+                            key: "test_phone",
+                            value: "5521971532700",
+                            type: "string",
+                            description: "📱 Test phone number for demos",
+                        },
+                        {
+                            key: "test_group",
+                            value: "120363312246943103@g.us",
+                            type: "string",
+                            description: "👥 Test group JID for demos",
+                        },
+                    ],
+                    item: [],
+                };
+
+                // Group endpoints by tags
+                const groupedEndpoints = {};
+
+                Object.entries(openapi.paths).forEach(([path, methods]) => {
+                    Object.entries(methods).forEach(([method, operation]) => {
+                        const tags = operation.tags || ["Other"];
+                        const primaryTag = tags[0];
+
+                        if (!groupedEndpoints[primaryTag]) {
+                            groupedEndpoints[primaryTag] = [];
+                        }
+
+                        const postmanItem = createAdvancedPostmanItem(
+                            path,
+                            method,
+                            operation,
+                            openapi,
+                        );
+                        groupedEndpoints[primaryTag].push(postmanItem);
+                    });
+                });
+
+                // Convert to organized Postman folders with emojis
+                const tagEmojis = {
+                    Admin: "⚙️",
+                    "Admin Global": "🌍",
+                    "Admin DLQ": "📮",
+                    "Admin Event Archive": "🗑️",
+                    "Admin Monitoring": "📡",
+                    "Admin License": "🔑",
+                    System: "💻",
+                    Webhook: "🔔",
+                    Session: "🔗",
+                    "Session Echo": "🔗",
+                    "Session S3": "☁️",
+                    "Session RabbitMQ": "🐰",
+                    User: "👤",
+                    "User LID": "🔗",
+                    Chat: "💬",
+                    Sync: "🔄",
+                    Send: "📤",
+                    Label: "🏷️",
+                    Group: "👥",
+                    Community: "🌐",
+                    Business: "🏢",
+                    Device: "📱",
+                    Privacy: "🔒",
+                    Newsletter: "📰",
+                    Status: "📢",
+                    Call: "📞",
+                    Other: "📋",
+                };
+
+                Object.entries(groupedEndpoints).forEach(([tag, items]) => {
+                    const emoji = tagEmojis[tag] || "📋";
+                    collection.item.push({
+                        name: `${emoji} ${tag} (${items.length} endpoints)`,
+                        description: `${tag} related endpoints - ${items.length} requests available`,
+                        item: items.sort((a, b) =>
+                            a.name.localeCompare(b.name),
+                        ),
+                    });
+                });
+
+                return collection;
+            }
+
+            // 🎯 Create advanced Postman item with comprehensive data
+            function createAdvancedPostmanItem(
+                path,
+                method,
+                operation,
+                openapi,
+            ) {
+                const item = {
+                    name: `${operation.summary || method.toUpperCase() + " " + path}`,
+                    description: `${operation.description || ""}\n\n**Endpoint:** \`${method.toUpperCase()} ${path}\`\n**Tags:** ${(operation.tags || []).join(", ")}`,
+                    request: {
+                        method: method.toUpperCase(),
+                        header: [],
+                        url: {
+                            raw: `{{base_url}}${path}`,
+                            host: ["{{base_url}}"],
+                            path: path.split("/").filter((p) => p),
+                        },
+                    },
+                    response: [],
+                    event: [],
+                };
+
+                const ensureHeader = (key, value, description) => {
+                    if (
+                        !item.request.header.some(
+                            (header) =>
+                                header.key.toLowerCase() === key.toLowerCase(),
+                        )
+                    ) {
+                        const headerEntry = {
+                            key,
+                            value,
+                            type: "text",
+                        };
+                        if (description) {
+                            headerEntry.description = description;
+                        }
+                        item.request.header.push(headerEntry);
+                    }
+                };
+
+                const hasEventStreamResponse = Object.values(
+                    operation.responses || {},
+                ).some(
+                    (response) =>
+                        response.content &&
+                        response.content["text/event-stream"],
+                );
+                if (hasEventStreamResponse) {
+                    ensureHeader(
+                        "Accept",
+                        "text/event-stream",
+                        "📡 Expect Server-Sent Events stream",
+                    );
+                }
+
+                // Add authentication based on security
+                if (operation.security) {
+                    operation.security.forEach((security) => {
+                        if (security.ApiKeyAuth) {
+                            item.request.header.push({
+                                key: "token",
+                                value: "{{api_token}}",
+                                type: "text",
+                                description: "🔑 User authentication token",
+                            });
+                        }
+                        if (security.AdminAuth) {
+                            item.request.header.push({
+                                key: "Authorization",
+                                value: "{{admin_token}}",
+                                type: "text",
+                                description: "🔐 Admin authentication token",
+                            });
+                        }
+                    });
+                }
+
+                // Add path parameters
+                const pathParams = (operation.parameters || []).filter(
+                    (p) => p.in === "path",
+                );
+                if (pathParams.length > 0) {
+                    pathParams.forEach((param) => {
+                        const placeholder = `{{${param.name}}}`;
+                        item.request.url.raw = item.request.url.raw.replace(
+                            `{${param.name}}`,
+                            placeholder,
+                        );
+
+                        // Add variable if not exists
+                        if (!item.request.url.variable) {
+                            item.request.url.variable = [];
+                        }
+                        item.request.url.variable.push({
+                            key: param.name,
+                            value:
+                                param.example ||
+                                param.schema?.example ||
+                                `${param.name}_value`,
+                            description: param.description,
+                        });
+                    });
+                }
+
+                // Add query parameters
+                const queryParams = (operation.parameters || []).filter(
+                    (p) => p.in === "query",
+                );
+                if (queryParams.length > 0) {
+                    item.request.url.query = queryParams.map((param) => ({
+                        key: param.name,
+                        value: param.example || param.schema?.example || "",
+                        description: param.description,
+                        disabled: !param.required,
+                    }));
+                }
+
+                // Add request body with complete and realistic examples
+                if (operation.requestBody) {
+                    const content = operation.requestBody.content;
+                    if (content && content["application/json"]) {
+                        const schema = content["application/json"].schema;
+                        let exampleBody = {};
+
+                        // Special handling for /user/info endpoint
+                        if (path === "/user/info") {
+                            exampleBody = {
+                                Phone: "5521971532700",
+                            };
+                        } else {
+                            // Get complete example from schema reference
+                            if (schema.$ref) {
+                                const refPath = schema.$ref.replace(
+                                    "#/definitions/",
+                                    "",
+                                );
+                                const definition =
+                                    openapi.definitions &&
+                                    openapi.definitions[refPath];
+                                if (definition) {
+                                    if (definition.example) {
+                                        // Use the complete example from the definition
+                                        exampleBody = definition.example;
+                                        console.log(
+                                            `✅ Using complete example for ${refPath}:`,
+                                            Object.keys(exampleBody),
+                                        );
+                                    } else if (definition.properties) {
+                                        // Generate complete example with ALL properties (not just required)
+                                        exampleBody =
+                                            generateCompleteExampleFromDefinition(
+                                                definition,
+                                                openapi.definitions,
+                                            );
+                                        console.log(
+                                            `🎨 Generated complete example for ${refPath} with ${Object.keys(exampleBody).length} fields`,
+                                        );
+                                    }
+                                }
+                            } else if (schema.example) {
+                                exampleBody = schema.example;
+                            } else if (schema.properties) {
+                                exampleBody = generateExampleFromProperties(
+                                    schema.properties,
+                                    schema.required || [],
+                                    openapi.definitions,
+                                );
+                            }
+                        }
+
+                        // Add helpful comments for complex objects
+                        let rawBody = JSON.stringify(exampleBody, null, 2);
+                        if (Object.keys(exampleBody).length > 3) {
+                            rawBody = `// 📝 ${operation.summary}\n// 🔗 ${method.toUpperCase()} ${path}\n// 💡 All optional fields included for complete reference\n\n${rawBody}`;
+                        }
+
+                        ensureHeader(
+                            "Content-Type",
+                            "application/json",
+                            "📦 JSON request payload",
+                        );
+
+                        item.request.body = {
+                            mode: "raw",
+                            raw: rawBody,
+                            options: {
+                                raw: {
+                                    language: "json",
+                                },
+                            },
+                        };
+                    }
+                }
+
+                // Add comprehensive response examples
+                if (operation.responses) {
+                    Object.entries(operation.responses).forEach(
+                        ([statusCode, response]) => {
+                            if (response.content) {
+                                if (response.content["application/json"]) {
+                                    const example =
+                                        response.content["application/json"]
+                                            .example;
+                                    if (example) {
+                                        item.response.push({
+                                            name: `${statusCode} ${response.description}`,
+                                            originalRequest: item.request,
+                                            status: response.description,
+                                            code: parseInt(statusCode),
+                                            header: [
+                                                {
+                                                    key: "Content-Type",
+                                                    value: "application/json",
+                                                },
+                                            ],
+                                            body: JSON.stringify(
+                                                example,
+                                                null,
+                                                2,
+                                            ),
+                                        });
+                                    }
+                                }
+                                if (response.content["text/event-stream"]) {
+                                    const example =
+                                        response.content["text/event-stream"]
+                                            .example;
+                                    if (example) {
+                                        item.response.push({
+                                            name: `${statusCode} ${response.description} (SSE)`,
+                                            originalRequest: item.request,
+                                            status: response.description,
+                                            code: parseInt(statusCode),
+                                            header: [
+                                                {
+                                                    key: "Content-Type",
+                                                    value: "text/event-stream",
+                                                },
+                                            ],
+                                            body: example,
+                                        });
+                                    }
+                                }
+                            }
+                        },
+                    );
+                }
+
+                // 🖼️ Add Postman Visualizer scripts for image responses (QR Code, Avatar, etc.)
+                if (path === "/session/qr" && method.toLowerCase() === "get") {
+                    item.event.push({
+                        listen: "test",
+                        script: {
+                            type: "text/javascript",
+                            exec: [
+                                "// 📸 QR Code Visualizer - Display QR code image in Postman",
+                                "var template = `",
+                                "    <div style='text-align: center; padding: 20px; font-family: Arial, sans-serif;'>",
+                                "        <h2 style='color: #27ae60; margin-bottom: 20px;'>📱 WhatsApp QR Code</h2>",
+                                "        <div style='background: white; padding: 20px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>",
+                                "            <img id='qrImage' src='{{response.qrcode}}' alt='QR Code' style='max-width: 400px; border: 2px solid #27ae60; border-radius: 8px;' />",
+                                "        </div>",
+                                "        <p style='margin-top: 20px; color: #666; font-size: 14px;'>",
+                                "            🔍 Scan this QR code with WhatsApp to connect your session",
+                                "        </p>",
+                                "    </div>",
+                                "`;",
+                                "",
+                                "function constructVisualizerPayload() {",
+                                "    try {",
+                                "        var res = pm.response.json();",
+                                "        var qrcode = res.data && res.data.QRCode ? res.data.QRCode : '';",
+                                "        return { response: { qrcode: qrcode } };",
+                                "    } catch(e) {",
+                                "        return { response: { qrcode: '' } };",
+                                "    }",
+                                "}",
+                                "",
+                                "pm.visualizer.set(template, constructVisualizerPayload());",
+                            ],
+                        },
+                    });
+                }
+
+                if (
+                    path === "/user/avatar" &&
+                    method.toLowerCase() === "post"
+                ) {
+                    item.event.push({
+                        listen: "test",
+                        script: {
+                            type: "text/javascript",
+                            exec: [
+                                "// 👤 Avatar Visualizer - Display user profile picture in Postman",
+                                "var template = `",
+                                "    <div style='text-align: center; padding: 20px; font-family: Arial, sans-serif;'>",
+                                "        <h2 style='color: #3498db; margin-bottom: 20px;'>👤 User Profile Picture</h2>",
+                                "        <div style='background: white; padding: 20px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>",
+                                "            <img id='avatarImage' src='{{response.url}}' alt='Avatar' style='max-width: 300px; border-radius: 50%; border: 3px solid #3498db;' />",
+                                "        </div>",
+                                "        <div style='margin-top: 20px; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto;'>",
+                                "            <p style='color: #666; font-size: 14px; margin: 5px 0;'><strong>Type:</strong> {{response.type}}</p>",
+                                "            <p style='color: #666; font-size: 14px; margin: 5px 0;'><strong>ID:</strong> {{response.id}}</p>",
+                                "            <p style='color: #666; font-size: 12px; margin: 10px 0; word-break: break-all;'><strong>Direct Path:</strong> {{response.direct_path}}</p>",
+                                "        </div>",
+                                "    </div>",
+                                "`;",
+                                "",
+                                "function constructVisualizerPayload() {",
+                                "    try {",
+                                "        var res = pm.response.json();",
+                                "        var data = res.data || {};",
+                                "        return {",
+                                "            response: {",
+                                "                url: data.url || '',",
+                                "                type: data.type || 'N/A',",
+                                "                id: data.id || 'N/A',",
+                                "                direct_path: data.direct_path || 'N/A'",
+                                "            }",
+                                "        };",
+                                "    } catch(e) {",
+                                "        return {",
+                                "            response: {",
+                                "                url: '',",
+                                "                type: 'Error',",
+                                "                id: 'N/A',",
+                                "                direct_path: 'Failed to parse response'",
+                                "            }",
+                                "        };",
+                                "    }",
+                                "}",
+                                "",
+                                "pm.visualizer.set(template, constructVisualizerPayload());",
+                            ],
+                        },
+                    });
+                }
+
+                return item;
+            }
+
+            // 🎨 Enhanced example generation with ALL fields included (uses new complete generation)
+            function generateExampleFromProperties(
+                properties,
+                required = [],
+                definitions = {},
+                visited = new Set(),
+            ) {
+                const example = {};
+
+                Object.entries(properties).forEach(([key, prop]) => {
+                    // Include ALL fields for complete examples
+                    example[key] = generateCompleteValueExample(
+                        key,
+                        prop,
+                        definitions,
+                        visited,
+                    );
+                });
+
+                return example;
+            }
+
+            // 🎯 Generate complete example from definition (includes ALL fields)
+            function generateCompleteExampleFromDefinition(
+                definition,
+                allDefinitions,
+                visited = new Set(),
+            ) {
+                // Prevent infinite recursion
+                if (visited.has(definition)) {
+                    return {};
+                }
+                visited.add(definition);
+
+                // If definition has a complete example, use it
+                if (definition.example) {
+                    return definition.example;
+                }
+
+                // Generate example with ALL properties (required + optional)
+                const example = {};
+
+                if (definition.properties) {
+                    Object.entries(definition.properties).forEach(
+                        ([key, prop]) => {
+                            example[key] = generateCompleteValueExample(
+                                key,
+                                prop,
+                                allDefinitions,
+                                visited,
+                            );
+                        },
+                    );
+                }
+
+                visited.delete(definition);
+                return example;
+            }
+
+            // 🔧 Generate complete value example with deep resolution
+            function generateCompleteValueExample(
+                key,
+                prop,
+                allDefinitions,
+                visited = new Set(),
+            ) {
+                // Use explicit example if available
+                if (prop.example !== undefined) {
+                    return prop.example;
+                }
+
+                // Handle $ref references
+                if (prop.$ref) {
+                    const refPath = prop.$ref.replace("#/definitions/", "");
+
+                    // Use predefined examples for common refs
+                    const predefined = generateExampleForRef(refPath);
+                    if (Object.keys(predefined).length > 0) {
+                        return predefined;
+                    }
+
+                    // Resolve from definitions
+                    const refDefinition = allDefinitions[refPath];
+                    if (refDefinition && !visited.has(refPath)) {
+                        visited.add(refPath);
+                        const result = generateCompleteExampleFromDefinition(
+                            refDefinition,
+                            allDefinitions,
+                            visited,
+                        );
+                        visited.delete(refPath);
+                        return result;
+                    }
+
+                    return {};
+                }
+
+                // Handle arrays with proper structure
+                if (prop.type === "array") {
+                    return generateArrayExample(
+                        key,
+                        prop,
+                        allDefinitions,
+                        visited,
+                    );
+                }
+
+                // Handle objects with properties
+                if (prop.type === "object") {
+                    return generateObjectExample(
+                        key,
+                        prop,
+                        allDefinitions,
+                        visited,
+                    );
+                }
+
+                // Handle primitive types
+                return generateValueExample(key, prop);
+            }
+
+            // 📋 Generate array examples with proper structure
+            function generateArrayExample(key, prop, allDefinitions, visited) {
+                const lowerKey = key.toLowerCase();
+
+                // Special handling for known array types
+                if (
+                    lowerKey.includes("sections") &&
+                    prop.items?.type === "object"
+                ) {
+                    // Generate MessageList sections structure
+                    return [
+                        {
+                            Title: "Electronics",
+                            Rows: [
+                                {
+                                    RowId: "electronics_1",
+                                    Title: "Smartphones",
+                                    Description: "Latest mobile devices",
+                                },
+                                {
+                                    RowId: "electronics_2",
+                                    Title: "Laptops",
+                                    Description: "High-performance computers",
+                                },
+                            ],
+                        },
+                        {
+                            Title: "Clothing",
+                            Rows: [
+                                {
+                                    RowId: "clothing_1",
+                                    Title: "Men's Fashion",
+                                    Description: "Trendy clothing for men",
+                                },
+                            ],
+                        },
+                    ];
+                }
+
+                if (
+                    lowerKey.includes("options") ||
+                    lowerKey.includes("choices")
+                ) {
+                    return ["Option 1", "Option 2", "Option 3"];
+                }
+
+                if (
+                    lowerKey.includes("participants") ||
+                    lowerKey.includes("phone")
+                ) {
+                    return ["5521971532700", "5521979232690"];
+                }
+
+                if (lowerKey.includes("jid") || lowerKey.includes("mention")) {
+                    return ["{{test_phone}}@s.whatsapp.net"];
+                }
+
+                if (lowerKey.includes("events")) {
+                    return ["Message", "ReadReceipt", "Connected"];
+                }
+
+                // Handle object items in arrays
+                if (prop.items?.type === "object") {
+                    if (prop.items.properties) {
+                        const itemExample = generateCompleteValueExample(
+                            "item",
+                            prop.items,
+                            allDefinitions,
+                            visited,
+                        );
+                        return [itemExample];
+                    }
+                    return [{}];
+                }
+
+                // Handle primitive array items
+                if (prop.items?.example) {
+                    return [prop.items.example];
+                }
+
+                return ["example_item"];
+            }
+
+            // 🏗️ Generate object examples with all properties
+            function generateObjectExample(key, prop, allDefinitions, visited) {
+                const lowerKey = key.toLowerCase();
+
+                // Handle known config objects with complete structure
+                if (lowerKey.includes("proxyconfig")) {
+                    return {
+                        enabled: true,
+                        proxyURL: "https://serverproxy.com:9080",
+                    };
+                }
+
+                if (lowerKey.includes("s3config")) {
+                    return {
+                        enabled: true,
+                        endpoint: "https://s3.amazonaws.com",
+                        region: "us-east-1",
+                        bucket: "my-whatsapp-media",
+                        access_key: "AKIAIOSFODNN7EXAMPLE",
+                        secret_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLE",
+                        path_style: false,
+                        public_url: "https://cdn.example.com",
+                        media_delivery: "both",
+                        retention_days: 30,
+                        disable_acl: true,
+                    };
+                }
+
+                if (lowerKey.includes("rabbitmqconfig")) {
+                    return {
+                        enabled: true,
+                        url: "amqp://guest:guest@localhost:5672/",
+                        exchange: "whatsapp.events",
+                        exchange_type: "topic",
+                        queue: "whatsapp.user.{user_id}",
+                        queue_type: "classic",
+                        routing_key: "whatsapp.{event_type}",
+                        events: "All",
+                        durable: true,
+                        auto_delete: false,
+                        exclusive: false,
+                        no_wait: false,
+                        delivery_mode: 2,
+                    };
+                }
+
+                if (lowerKey.includes("whatsappconfig")) {
+                    return {
+                        waVersion: "2.3000.1027949008",
+                        waPlatform: "WEB",
+                        waReleaseChannel: "RELEASE",
+                        waWebSubPlatform: "WEB_BROWSER",
+                        waOSName: "Mac OS 10",
+                        waOSVersion: "10.15.7",
+                        waDeviceName: "Desktop",
+                        waManufacturer: "Apple",
+                        waDeviceBoard: "Mac-123456",
+                        waLocaleLanguage: "en",
+                        waLocaleCountry: "US",
+                        waMCC: "000",
+                        waMNC: "000",
+                        waConnectType: "WIFI_UNKNOWN",
+                        waPlatformType: "DESKTOP",
+                    };
+                }
+
+                if (lowerKey.includes("location")) {
+                    return {
+                        Name: "Conference Room A, Main Office",
+                        DegreesLatitude: -23.5505,
+                        DegreesLongitude: -46.6333,
+                    };
+                }
+
+                // Generate from properties if available
+                if (prop.properties) {
+                    const objExample = {};
+                    Object.entries(prop.properties).forEach(
+                        ([propKey, propValue]) => {
+                            objExample[propKey] = generateCompleteValueExample(
+                                propKey,
+                                propValue,
+                                allDefinitions,
+                                visited,
+                            );
+                        },
+                    );
+                    return objExample;
+                }
+
+                return {};
+            }
+
+            // 🎯 Generate examples for common reference types
+            function generateExampleForRef(refName) {
+                switch (refName) {
+                    case "ContextInfo":
+                        return {
+                            StanzaId: "3EB06F9067F80BAB89FF",
+                            Participant: "{{test_phone}}@s.whatsapp.net",
+                            IsForwarded: false,
+                            MentionedJID: ["{{test_phone}}@s.whatsapp.net"],
+                            MentionAll: false,
+                        };
+                    default:
+                        return {};
+                }
+            }
+
+            // 🎨 Generate realistic values based on field name and type
+            function generateValueExample(key, prop) {
+                const lowerKey = key.toLowerCase();
+
+                if (prop.type === "string") {
+                    if (prop.enum) return prop.enum[0];
+                    if (lowerKey.includes("phone")) return "{{test_phone}}";
+                    if (lowerKey.includes("jid")) return "{{test_group}}";
+                    if (lowerKey.includes("id") && !lowerKey.includes("stanza"))
+                        return `${key.toUpperCase()}_001`;
+                    if (lowerKey.includes("url"))
+                        return "https://example.com/resource";
+                    if (lowerKey.includes("token")) return "{{api_token}}";
+                    if (lowerKey.includes("name")) return `Example ${key}`;
+                    if (lowerKey.includes("body") || lowerKey.includes("text"))
+                        return "Esta é uma mensagem de exemplo 🚀";
+                    if (lowerKey.includes("caption"))
+                        return "Caption example with emoji 📝";
+                    if (lowerKey.includes("description"))
+                        return "Detailed description example";
+                    if (lowerKey.includes("title")) return "Title Example";
+                    if (lowerKey.includes("image"))
+                        return "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...";
+                    if (lowerKey.includes("audio"))
+                        return "data:audio/ogg;base64,T2dnUwACAAAAAAAAAABK...";
+                    if (lowerKey.includes("video"))
+                        return "data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlz...";
+                    if (lowerKey.includes("document"))
+                        return "data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsO...";
+                    return `example_${key}`;
+                } else if (prop.type === "integer" || prop.type === "number") {
+                    if (
+                        lowerKey.includes("time") ||
+                        lowerKey.includes("timestamp")
+                    )
+                        return Math.floor(Date.now() / 1000);
+                    if (lowerKey.includes("presence")) return 3000;
+                    if (lowerKey.includes("duration")) return 86400;
+                    if (lowerKey.includes("port")) return 8080;
+                    return prop.minimum || prop.default || 1;
+                } else if (prop.type === "boolean") {
+                    if (
+                        lowerKey.includes("check") ||
+                        lowerKey.includes("preview") ||
+                        lowerKey.includes("enabled")
+                    )
+                        return true;
+                    if (
+                        lowerKey.includes("forwarded") ||
+                        lowerKey.includes("once") ||
+                        lowerKey.includes("ptt")
+                    )
+                        return false;
+                    return prop.default !== undefined ? prop.default : false;
+                } else if (prop.type === "array") {
+                    if (prop.items?.example) return [prop.items.example];
+                    if (
+                        lowerKey.includes("jid") ||
+                        lowerKey.includes("mention")
+                    )
+                        return ["{{test_phone}}@s.whatsapp.net"];
+                    if (lowerKey.includes("phone")) return ["{{test_phone}}"];
+                    if (lowerKey.includes("options"))
+                        return ["Option 1", "Option 2"];
+                    return ["example_item"];
+                } else if (prop.type === "object") {
+                    return {};
+                }
+
+                return null;
+            }
+
+            // 📥 Download Postman Collection from OpenAPI 3.0 (Primary)
+            function downloadPostmanFromOpenAPI() {
+                console.log(
+                    "🎯 Attempting to download from OpenAPI 3.0 (spec.yml)...",
+                );
+
+                fetch("./spec.yml")
+                    .then((response) => {
+                        if (!response.ok)
+                            throw new Error(`HTTP ${response.status}`);
+                        return response.text();
+                    })
+                    .then((yamlText) => {
+                        const openapi = jsyaml.load(yamlText);
+                        const collection = openAPI3ToPostman(openapi);
+
+                        downloadFile(
+                            JSON.stringify(collection, null, 2),
+                            "dinastiapi_complete_collection.json",
+                            "application/json",
+                        );
+
+                        showMessage(
+                            "✅ Complete Postman Collection downloaded successfully!",
+                            "success",
+                        );
+                    })
+                    .catch((error) => {
+                        console.error(
+                            "❌ Error generating from OpenAPI 3.0:",
+                            error,
+                        );
+                        showMessage(
+                            "❌ Failed to generate Postman collection. Please check if spec.yml is available.",
+                            "error",
+                        );
+                    });
+            }
+
+            // 📁 Download file helper
+            function downloadFile(content, filename, contentType) {
+                const blob = new Blob([content], { type: contentType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            // 💬 Show user messages with different styles
+            function showMessage(message, type = "info") {
+                const colors = {
+                    success: "#27ae60",
+                    warning: "#f39c12",
+                    error: "#e74c3c",
+                    info: "#3498db",
+                };
+
+                const messageDiv = document.createElement("div");
+                messageDiv.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: ${colors[type]};
+          color: white;
+          padding: 12px 20px;
+          border-radius: 8px;
+          font-weight: bold;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          z-index: 10000;
+          max-width: 400px;
+          animation: slideIn 0.3s ease-out;
+        `;
+
+                messageDiv.textContent = message;
+                document.body.appendChild(messageDiv);
+
+                setTimeout(() => {
+                    messageDiv.style.animation = "slideOut 0.3s ease-in";
+                    setTimeout(() => messageDiv.remove(), 300);
+                }, 4000);
+            }
+
+            // 📊 Load OpenAPI 3.0 specification
+            function loadSpecification() {
+                console.log("🔍 Loading OpenAPI 3.0 specification...");
+                updateStatusIndicator("🔄 Loading...", "loading");
+
+                fetch("./spec.yml")
+                    .then((response) => response.text())
+                    .then((yamlText) => {
+                        currentSpec = jsyaml.load(yamlText);
+                        specType = "openapi3";
+                        specLoaded = true;
+
+                        const pathsCount = Object.keys(
+                            currentSpec.paths || {},
+                        ).length;
+                        const endpointsCount = Object.values(
+                            currentSpec.paths || {},
+                        ).reduce(
+                            (count, methods) =>
+                                count + Object.keys(methods).length,
+                            0,
+                        );
+
+                        console.log(
+                            `✅ OpenAPI 3.0 loaded: ${endpointsCount} endpoints in ${pathsCount} paths`,
+                        );
+                        updateStatusIndicator(
+                            `✅ ${endpointsCount} endpoints ready`,
+                            "success",
+                        );
+                    })
+                    .catch((error) => {
+                        console.error(
+                            "❌ Failed to load OpenAPI 3.0 specification:",
+                            error,
+                        );
+                        updateStatusIndicator("❌ Spec Not Available", "error");
+                    });
+            }
+
+            // 📊 Update status indicator in UI
+            function updateStatusIndicator(text, type) {
+                const indicator = document.querySelector("#status-indicator");
+                if (indicator) {
+                    indicator.textContent = text;
+
+                    const colors = {
+                        success: "#27ae60",
+                        warning: "#f39c12",
+                        error: "#e74c3c",
+                        loading: "#3498db",
+                    };
+
+                    indicator.style.color = colors[type] || colors.success;
+                    indicator.style.borderColor =
+                        colors[type] || colors.success;
+                    indicator.style.background = `rgba(${type === "success" ? "39,174,96" : type === "warning" ? "243,156,18" : type === "error" ? "231,76,60" : "52,152,219"},0.1)`;
+                }
+            }
+
+            // ℹ️ Show API specification information
+            function showSpecInfo() {
+                if (!specLoaded) {
+                    showMessage(
+                        "⏳ OpenAPI 3.0 specification still loading...",
+                        "info",
+                    );
+                    return;
+                }
+
+                const info = currentSpec.info;
+                const pathsCount = Object.keys(currentSpec.paths || {}).length;
+                const endpointsCount = Object.values(
+                    currentSpec.paths || {},
+                ).reduce(
+                    (count, methods) => count + Object.keys(methods).length,
+                    0,
+                );
+                const definitionsCount = Object.keys(
+                    currentSpec.definitions || {},
+                ).length;
+
+                const infoText = `
+🚀 ${info.title} v${info.version}
+📊 Format: OpenAPI 3.0 Complete
+🔗 Endpoints: ${endpointsCount} (${pathsCount} paths)
+📋 Definitions: ${definitionsCount} schemas
+📅 Generated: ${new Date().toLocaleDateString()}
+        `.trim();
+
+                showMessage(infoText, "info");
+            }
+
+            // 🎨 Initialize Swagger UI with enhanced configuration
+            function initializeSwaggerUI() {
+                console.log("🎨 Initializing Swagger UI...");
+
+                const ui = SwaggerUIBundle({
+                    url: "./swagger.yaml", // Primary source: OpenAPI 3.0
+                    dom_id: "#swagger-ui",
+                    deepLinking: true,
+                    displayRequestDuration: true,
+                    docExpansion: "list",
+                    filter: true,
+                    showExtensions: true,
+                    showCommonExtensions: true,
+                    tryItOutEnabled: true,
+                    onComplete: () => {
+                        console.log("✅ Swagger UI loaded completely");
+                        updateStatusIndicator(
+                            "✅ Documentation Ready",
+                            "success",
+                        );
+                    },
+                    requestInterceptor: (req) => {
+                        console.log("🔍 API Request:", req.method, req.url);
+                        return req;
+                    },
+                    responseInterceptor: (res) => {
+                        console.log("📨 API Response:", res.status, res.url);
+                        return res;
+                    },
+                    presets: [
+                        SwaggerUIBundle.presets.apis,
+                        SwaggerUIStandalonePreset,
+                    ],
+                    plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+                });
+
+                window.ui = ui;
+
+                // Load specification immediately since we have a custom topbar
+                loadSpecification();
+            }
+
+            // 🚀 Initialize everything when page loads
+            window.onload = function () {
+                // Initialize Swagger UI with custom topbar already present
+                initializeSwaggerUI();
+
+                // Add essential CSS for notifications
+                const style = document.createElement("style");
+                style.textContent = `
+          @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+          @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+          }
+        `;
+                document.head.appendChild(style);
+            };
+
+            // 🔧 Main function for Postman Collection download
+            function downloadPostmanCollection() {
+                downloadPostmanFromOpenAPI();
+            }
+        </script>
+    </body>
 </html>

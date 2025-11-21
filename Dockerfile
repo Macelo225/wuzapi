@@ -1,12 +1,7 @@
-FROM golang:1.24-bullseye AS builder
+FROM golang:1.23-bullseye AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     pkg-config \
@@ -15,7 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY go.mod go.sum ./
-RUN go mod download
+ENV GOTOOLCHAIN=auto
+RUN go mod download && go mod verify
 
 COPY . .
 ENV CGO_ENABLED=1

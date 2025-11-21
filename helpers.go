@@ -270,11 +270,29 @@ func callHookWithHmac(myurl string, payload map[string]string, userID string, en
 				var postmap map[string]interface{}
 
 				if err := json.Unmarshal([]byte(jsonStr), &postmap); err == nil {
+					// Add instance metadata
 					if instanceName, ok := payload["instanceName"]; ok {
 						postmap["instanceName"] = instanceName
 					}
+					if token, ok := payload["token"]; ok {
+						postmap["token"] = token
+					}
 					postmap["userID"] = userID
-					body = postmap
+
+					// Add timestamp if not present
+					if _, exists := postmap["timestamp"]; !exists {
+						postmap["timestamp"] = time.Now().Unix()
+					}
+
+					// Wrap in standard envelope for better compatibility
+					envelope := map[string]interface{}{
+						"event":        postmap["type"],
+						"instanceName": postmap["instanceName"],
+						"userID":       userID,
+						"timestamp":    postmap["timestamp"],
+						"data":         postmap,
+					}
+					body = envelope
 				}
 			}
 

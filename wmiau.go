@@ -25,11 +25,13 @@ import (
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/appstate"
 	"go.mau.fi/whatsmeow/proto/waCompanionReg"
+	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"golang.org/x/net/proxy"
+	"google.golang.org/protobuf/proto"
 )
 
 // db field declaration as *sqlx.DB
@@ -227,7 +229,19 @@ func checkIfSubscribedToEvent(subscribedEvents []string, eventType string, userI
 
 // Connects to Whatsapp Websocket on server startup if last state was connected
 func (s *server) connectOnStartup() {
-	rows, err := s.db.Queryx("SELECT id,name,token,jid,webhook,events,proxy_url,CASE WHEN s3_enabled THEN 'true' ELSE 'false' END AS s3_enabled,media_delivery,COALESCE(history, 0) as history,hmac_key FROM users WHERE connected=1")
+	rows, err := s.db.Queryx(`SELECT id,name,token,jid,webhook,events,proxy_url,
+		CASE WHEN s3_enabled THEN 'true' ELSE 'false' END AS s3_enabled,
+		media_delivery,COALESCE(history, 0) as history,hmac_key,
+		COALESCE(skip_media, false) as skip_media,
+		COALESCE(skip_groups, false) as skip_groups,
+		COALESCE(skip_newsletters, false) as skip_newsletters,
+		COALESCE(skip_broadcasts, false) as skip_broadcasts,
+		COALESCE(skip_own_messages, false) as skip_own_messages,
+		COALESCE(skip_calls, false) as skip_calls,
+		COALESCE(call_reject_enabled, false) as call_reject_enabled,
+		COALESCE(call_reject_type, 'busy') as call_reject_type,
+		COALESCE(call_reject_message, '') as call_reject_message
+		FROM users WHERE connected=1`)
 	if err != nil {
 		log.Error().Err(err).Msg("DB Problem")
 		return
@@ -245,7 +259,11 @@ func (s *server) connectOnStartup() {
 		media_delivery := ""
 		var history int
 		var hmac_key []byte
-		err = rows.Scan(&txtid, &name, &token, &jid, &webhook, &events, &proxy_url, &s3_enabled, &media_delivery, &history, &hmac_key)
+		var skipMedia, skipGroups, skipNewsletters, skipBroadcasts, skipOwnMessages, skipCalls, callRejectEnabled bool
+		var callRejectType, callRejectMessage string
+		err = rows.Scan(&txtid, &name, &token, &jid, &webhook, &events, &proxy_url, &s3_enabled, &media_delivery, &history, &hmac_key,
+			&skipMedia, &skipGroups, &skipNewsletters, &skipBroadcasts, &skipOwnMessages, &skipCalls,
+			&callRejectEnabled, &callRejectType, &callRejectMessage)
 		if err != nil {
 			log.Error().Err(err).Msg("DB Problem")
 			return
@@ -257,17 +275,26 @@ func (s *server) connectOnStartup() {
 
 			log.Info().Str("token", token).Msg("Connect to Whatsapp on startup")
 			v := Values{map[string]string{
-				"Id":               txtid,
-				"Name":             name,
-				"Jid":              jid,
-				"Webhook":          webhook,
-				"Token":            token,
-				"Proxy":            proxy_url,
-				"Events":           events,
-				"S3Enabled":        s3_enabled,
-				"MediaDelivery":    media_delivery,
-				"History":          fmt.Sprintf("%d", history),
-				"HmacKeyEncrypted": hmacKeyEncrypted,
+				"Id":                txtid,
+				"Name":              name,
+				"Jid":               jid,
+				"Webhook":           webhook,
+				"Token":             token,
+				"Proxy":             proxy_url,
+				"Events":            events,
+				"S3Enabled":         s3_enabled,
+				"MediaDelivery":     media_delivery,
+				"History":           fmt.Sprintf("%d", history),
+				"HmacKeyEncrypted":  hmacKeyEncrypted,
+				"SkipMedia":         strconv.FormatBool(skipMedia),
+				"SkipGroups":        strconv.FormatBool(skipGroups),
+				"SkipNewsletters":   strconv.FormatBool(skipNewsletters),
+				"SkipBroadcasts":    strconv.FormatBool(skipBroadcasts),
+				"SkipOwnMessages":   strconv.FormatBool(skipOwnMessages),
+				"SkipCalls":         strconv.FormatBool(skipCalls),
+				"CallRejectEnabled": strconv.FormatBool(callRejectEnabled),
+				"CallRejectType":    callRejectType,
+				"CallRejectMessage": callRejectMessage,
 			}}
 			userinfocache.Set(token, v, cache.NoExpiration)
 			// Gets and set subscription to webhook events
@@ -793,6 +820,41 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 		log.Info().Msg("Received StreamReplaced event")
 		return
 	case *events.Message:
+		// Check skip settings from cache
+		skipGroups := false
+		skipNewsletters := false
+		skipBroadcasts := false
+		skipOwnMessages := false
+		skipMediaSetting := false
+
+		if userinfo, found := userinfocache.Get(mycli.token); found {
+			skipGroups = userinfo.(Values).Get("SkipGroups") == "true"
+			skipNewsletters = userinfo.(Values).Get("SkipNewsletters") == "true"
+			skipBroadcasts = userinfo.(Values).Get("SkipBroadcasts") == "true"
+			skipOwnMessages = userinfo.(Values).Get("SkipOwnMessages") == "true"
+			skipMediaSetting = userinfo.(Values).Get("SkipMedia") == "true"
+		}
+
+		// Apply skip logic
+		if skipOwnMessages && evt.Info.IsFromMe {
+			log.Debug().Str("userID", mycli.userID).Msg("Skipping own message due to skip_own_messages setting")
+			return
+		}
+
+		if skipGroups && evt.Info.IsGroup {
+			log.Debug().Str("userID", mycli.userID).Str("chat", evt.Info.Chat.String()).Msg("Skipping group message due to skip_groups setting")
+			return
+		}
+
+		if skipNewsletters && evt.Info.Chat.Server == "newsletter" {
+			log.Debug().Str("userID", mycli.userID).Str("chat", evt.Info.Chat.String()).Msg("Skipping newsletter message due to skip_newsletters setting")
+			return
+		}
+
+		if skipBroadcasts && evt.Info.Chat.Server == "broadcast" {
+			log.Debug().Str("userID", mycli.userID).Str("chat", evt.Info.Chat.String()).Msg("Skipping broadcast message due to skip_broadcasts setting")
+			return
+		}
 
 		var s3Config struct {
 			Enabled       string `db:"s3_enabled"`
@@ -801,6 +863,7 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 
 		lastMessageCache.Set(mycli.userID, &evt.Info, cache.DefaultExpiration)
 		myuserinfo, found := userinfocache.Get(mycli.token)
+		_ = skipMedia // Will be used for media processing below
 		if !found {
 			err := mycli.db.Get(&s3Config, "SELECT CASE WHEN s3_enabled = 1 THEN 'true' ELSE 'false' END AS s3_enabled, media_delivery FROM users WHERE id = $1", txtid)
 			if err != nil {
@@ -831,7 +894,7 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 
 		log.Info().Str("id", evt.Info.ID).Str("source", evt.Info.SourceString()).Str("parts", strings.Join(metaParts, ", ")).Msg("Message Received")
 
-		if !*skipMedia {
+		if !*skipMedia && !skipMediaSetting {
 			// try to get Image if any
 			img := evt.Message.GetImageMessage()
 			if img != nil {
@@ -1724,6 +1787,43 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 		postmap["type"] = "CallOffer"
 		dowebhook = 1
 		log.Info().Str("event", fmt.Sprintf("%+v", evt)).Msg("Got call offer")
+
+		// Check skip_calls and call_reject settings
+		skipCalls := false
+		callRejectEnabled := false
+		callRejectMessage := ""
+
+		if userinfo, found := userinfocache.Get(mycli.token); found {
+			skipCalls = userinfo.(Values).Get("SkipCalls") == "true"
+			callRejectEnabled = userinfo.(Values).Get("CallRejectEnabled") == "true"
+			callRejectMessage = userinfo.(Values).Get("CallRejectMessage")
+		}
+
+		// Auto-reject call if enabled
+		if callRejectEnabled {
+			err := mycli.WAClient.RejectCall(context.Background(), evt.From, evt.CallID)
+			if err != nil {
+				log.Error().Err(err).Str("callID", evt.CallID).Msg("Failed to auto-reject call")
+			} else {
+				log.Info().Str("callID", evt.CallID).Str("from", evt.From.String()).Msg("Call auto-rejected")
+
+				// Send custom message if configured
+				if callRejectMessage != "" {
+					_, err := mycli.WAClient.SendMessage(context.Background(), evt.From, &waE2E.Message{
+						Conversation: proto.String(callRejectMessage),
+					})
+					if err != nil {
+						log.Error().Err(err).Msg("Failed to send call reject message")
+					}
+				}
+			}
+		}
+
+		// Skip webhook for calls if skip_calls is enabled
+		if skipCalls {
+			log.Debug().Str("userID", mycli.userID).Msg("Skipping call webhook due to skip_calls setting")
+			return
+		}
 	case *events.CallAccept:
 		postmap["type"] = "CallAccept"
 		dowebhook = 1

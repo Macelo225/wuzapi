@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WuzAPI</title>
+  <title>DinastiAPI</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.4/dist/semantic.min.css">
   <link rel="stylesheet" href="css/app.css">
 </head>
@@ -15,8 +15,9 @@
       <div class="ui centered card login" style="width:600px;">
         <div class="content">
           <div class="center aligned mb-4">
-            <i class="whatsapp icon bi-whatsapp"></i> 
-            <h2 class="ui header">WuzAPI Manager</h2>
+            <i class="whatsapp icon bi-whatsapp"></i>
+            <h2 class="ui header">DinastiAPI Manager</h2>
+            <h3 class="ui header">v1.2.6</h3>
             <p class="text-muted">Log in to access the dashboard</p>
           </div>
           <form id="loginForm" class="ui form mb-4">
@@ -56,7 +57,7 @@
     <div class="ui container fluid secondary pointing">
       <a href="#" class="header item">
         <span class='title-container'>
-          <i class="whatsapp icon"></i> WuzAPI Manager
+          <i class="whatsapp icon"></i> DinastiAPI Manager
         </span>
       </a>
       <div class="right menu">
@@ -70,7 +71,7 @@
       </div>
     </div>
   </div>
-  
+
   <div style='height:70px;'>&nbsp;</div> <!-- top margin/spacer for header -->
 
   <!-- Instances Table -->
@@ -104,7 +105,7 @@
         <tbody id="instances-body"></tbody>
       </table>
     </div>
-  </div> 
+  </div>
 
   <!-- Instance Cards and Go Back to list button -->
   <div class="ui container fluid p1">
@@ -139,16 +140,48 @@
           <div class="description">Configure webhook URL and event subscriptions.</div>
         </div>
       </div>
-      <div class="purple card hidden widget" style="cursor: pointer;" id="historyConfig">
+      <div class="purple card hidden widget" style="cursor: pointer;" id="rabbitmqConfig">
         <div class="content"><a class="ui purple right ribbon label">Config</a>
-          <div class="header">Message History</div>
-          <div class="description">Configure message history.</div>
+          <div class="header">RabbitMQ Events</div>
+          <div class="description">Configure RabbitMQ for publishing WhatsApp events.</div>
         </div>
       </div>
-      <div class="purple card hidden widget" style="cursor: pointer;" id="hmacConfig">
+      <div class="purple card hidden widget" style="cursor: pointer;" id="skipMediaConfig">
         <div class="content"><a class="ui purple right ribbon label">Config</a>
-          <div class="header">HMAC Key</div>
-          <div class="description">Configure HMAC key for webhook security.</div>
+          <div class="header">Skip Media Download</div>
+          <div class="description">Configure whether to skip downloading media in events.</div>
+        </div>
+      </div>
+      <div class="purple card hidden widget" style="cursor: pointer;" id="skipGroupsConfig">
+        <div class="content"><a class="ui purple right ribbon label">Config</a>
+          <div class="header">Skip Groups</div>
+          <div class="description">Configure whether to skip processing group messages.</div>
+        </div>
+      </div>
+      <div class="purple card hidden widget" style="cursor: pointer;" id="skipNewslettersConfig">
+        <div class="content"><a class="ui purple right ribbon label">Config</a>
+          <div class="header">Skip Newsletters</div>
+          <div class="description">Configure whether to skip processing newsletter messages.</div>
+        </div>
+      </div>
+      <div class="purple card hidden widget" style="cursor: pointer;" id="skipBroadcastsConfig">
+        <div class="content"><a class="ui purple right ribbon label">Config</a>
+          <div class="header">Skip Broadcasts</div>
+          <div class="description">Configure whether to skip processing broadcast messages.</div>
+        </div>
+      </div>
+
+      <div class="purple card hidden widget" style="cursor: pointer;" id="skipOwnMessagesConfig">
+        <div class="content"><a class="ui purple right ribbon label">Config</a>
+          <div class="header">Skip Own Messages</div>
+          <div class="description">Configure whether to skip processing your own sent messages.</div>
+        </div>
+      </div>
+
+      <div class="purple card hidden widget" style="cursor: pointer;" id="skipCallsConfig">
+        <div class="content"><a class="ui purple right ribbon label">Config</a>
+          <div class="header">Skip Calls</div>
+          <div class="description">Configure automatic call rejection with custom messages.</div>
         </div>
       </div>
     </div>
@@ -173,6 +206,48 @@
           <div class="description"> Get all contacts.</div>
         </div>
       </div>
+      <div class="red card hidden widget" style="cursor: pointer;" id="businessProfile">
+        <div class="content"><a class="ui red right ribbon label">User</a>
+          <div class="header">Business Profile</div>
+          <div class="description"> Get business profile information by phone number.</div>
+        </div>
+      </div>
+      <div class="red card hidden widget" style="cursor: pointer;" id="checkUser">
+        <div class="content"><a class="ui red right ribbon label">User</a>
+          <div class="header">Check User</div>
+          <div class="description"> Check if users/phones are on WhatsApp.</div>
+        </div>
+      </div>
+      <div class="red card hidden widget" style="cursor: pointer;" id="myPrivacySettings">
+        <div class="content"><a class="ui red right ribbon label">User</a>
+          <div class="header">Privacy Settings</div>
+          <div class="description"> View your current privacy settings.</div>
+        </div>
+      </div>
+      <div class="red card hidden widget" style="cursor: pointer;" id="changePushName">
+        <div class="content"><a class="ui red right ribbon label">User</a>
+          <div class="header">Change Push Name</div>
+          <div class="description"> Change your display name (push name).</div>
+        </div>
+      </div>
+      <div class="red card hidden widget" style="cursor: pointer;" id="myStatus">
+        <div class="content"><a class="ui red right ribbon label">User</a>
+          <div class="header">My Status</div>
+          <div class="description"> View and update your status message.</div>
+        </div>
+      </div>
+      <div class="red card hidden widget" style="cursor: pointer;" id="sendPresence">
+        <div class="content"><a class="ui red right ribbon label">User</a>
+          <div class="header">Send Presence</div>
+          <div class="description"> Set your global presence status (available/unavailable).</div>
+        </div>
+      </div>
+      <div class="red card hidden widget" style="cursor: pointer;" id="updateProfile">
+        <div class="content"><a class="ui red right ribbon label">User</a>
+          <div class="header">Update Profile</div>
+          <div class="description"> Update your name and/or authentication token.</div>
+        </div>
+      </div>
     </div>
 
     <div class="ui horizontal divider widget"> Chat </div>
@@ -181,13 +256,57 @@
       <div class="blue card hidden widget" style="cursor: pointer;" id="sendTextMessage">
         <div class="content"><a class="ui blue right ribbon label">Chat</a>
           <div class="header">Send Text Message</div>
-          <div class="description"> Sends a text message.</div>
+          <div class="description"> Sends a text message with support for link preview, and custom duration.</div>
         </div>
       </div>
       <div class="blue card hidden widget" style="cursor: pointer;" id="deleteMessage">
         <div class="content"><a class="ui blue right ribbon label">Chat</a>
           <div class="header">Delete Message</div>
           <div class="description"> Deletes your sent message.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ui horizontal divider widget"> Status </div>
+    <div class="ui three column stackable grid cards">
+      <div class="orange card hidden widget" style="cursor: pointer;" id="sendTextStatus">
+        <div class="content"><a class="ui orange right ribbon label">Status</a>
+          <div class="header">Send Text Status</div>
+          <div class="description">Send text status with custom colors and fonts.</div>
+        </div>
+      </div>
+      <div class="orange card hidden widget" style="cursor: pointer;" id="sendImageStatus">
+        <div class="content"><a class="ui orange right ribbon label">Status</a>
+          <div class="header">Send Image Status</div>
+          <div class="description">Send image status with optional caption.</div>
+        </div>
+      </div>
+      <div class="orange card hidden widget" style="cursor: pointer;" id="sendVideoStatus">
+        <div class="content"><a class="ui orange right ribbon label">Status</a>
+          <div class="header">Send Video Status</div>
+          <div class="description">Send video status with optional caption.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ui horizontal divider widget"> Newsletter </div>
+    <div class="ui three column stackable grid cards">
+      <div class="purple card hidden widget" style="cursor: pointer;" id="listNewsletter">
+        <div class="content"><a class="ui purple right ribbon label">Newsletter</a>
+          <div class="header">List Newsletters</div>
+          <div class="description">View all your subscribed newsletters.</div>
+        </div>
+      </div>
+      <div class="purple card hidden widget" style="cursor: pointer;" id="createNewsletter">
+        <div class="content"><a class="ui purple right ribbon label">Newsletter</a>
+          <div class="header">Create Newsletter</div>
+          <div class="description">Create a new WhatsApp newsletter channel.</div>
+        </div>
+      </div>
+      <div class="purple card hidden widget" style="cursor: pointer;" id="newsletterInfo">
+        <div class="content"><a class="ui purple right ribbon label">Newsletter</a>
+          <div class="header">Newsletter Info</div>
+          <div class="description">Get information about a specific newsletter.</div>
         </div>
       </div>
     </div>
@@ -321,65 +440,76 @@
       <div class="ui form">
         <div class="field">
           <label>Webhook Events</label>
-          <select id="webhookEvents" class="ui fluid dropdown" multiple="">
+          <select id="webhookEvents" class="ui fluid dropdown events-dropdown" multiple="">
             <option value="">Select Events</option>
-            <!-- Messages and Communication -->
-            <option value="Message">Message</option>
-            <option value="UndecryptableMessage">Undecryptable Message</option>
-            <option value="Receipt">Receipt</option>
-            <option value="MediaRetry">Media Retry</option>
-            <!-- Groups and Contacts -->
-            <option value="GroupInfo">Group Info</option>
-            <option value="JoinedGroup">Joined Group</option>
-            <option value="Picture">Picture</option>
-            <option value="BlocklistChange">Blocklist Change</option>
+            <option value="AppState">App State</option>
+            <option value="AppStateSyncComplete">App State Sync Complete</option>
             <option value="Blocklist">Blocklist</option>
-            <!-- Connection and Session -->
+            <option value="BlocklistChange">Blocklist Change</option>
+            <option value="CallAccept">Call Accept</option>
+            <option value="CallOffer">Call Offer</option>
+            <option value="CallOfferNotice">Call Offer Notice</option>
+            <option value="CallRelayLatency">Call Relay Latency</option>
+            <option value="CallTerminate">Call Terminate</option>
+            <option value="CATRefreshError">CAT Refresh Error</option>
+            <option value="ChatPresence">Chat Presence</option>
+            <option value="ClientOutdated">Client Outdated</option>
             <option value="Connected">Connected</option>
-            <option value="Disconnected">Disconnected</option>
             <option value="ConnectFailure">Connect Failure</option>
+            <option value="Disconnected">Disconnected</option>
+            <option value="FBMessage">FB Message</option>
+            <option value="GroupInfo">Group Info</option>
+            <option value="HistorySync">History Sync</option>
+            <option value="IdentityChange">Identity Change</option>
+            <option value="JoinedGroup">Joined Group</option>
             <option value="KeepAliveRestored">Keep Alive Restored</option>
             <option value="KeepAliveTimeout">Keep Alive Timeout</option>
             <option value="LoggedOut">Logged Out</option>
-            <option value="ClientOutdated">Client Outdated</option>
-            <option value="TemporaryBan">Temporary Ban</option>
-            <option value="StreamError">Stream Error</option>
-            <option value="StreamReplaced">Stream Replaced</option>
-            <option value="PairSuccess">Pair Success</option>
-            <option value="PairError">Pair Error</option>
-            <option value="QR">QR</option>
-            <option value="QRScannedWithoutMultidevice">QR Scanned Without Multidevice</option>
-            <!-- Privacy and Settings -->
-            <option value="PrivacySettings">Privacy Settings</option>
-            <option value="PushNameSetting">Push Name Setting</option>
-            <option value="UserAbout">User About</option>
-            <!-- Synchronization and State -->
-            <option value="AppState">App State</option>
-            <option value="AppStateSyncComplete">App State Sync Complete</option>
-            <option value="HistorySync">History Sync</option>
-            <option value="OfflineSyncCompleted">Offline Sync Completed</option>
-            <option value="OfflineSyncPreview">Offline Sync Preview</option>
-            <!-- Calls -->
-            <option value="CallOffer">Call Offer</option>
-            <option value="CallAccept">Call Accept</option>
-            <option value="CallTerminate">Call Terminate</option>
-            <option value="CallOfferNotice">Call Offer Notice</option>
-            <option value="CallRelayLatency">Call Relay Latency</option>
-            <!-- Presence and Activity -->
-            <option value="Presence">Presence</option>
-            <option value="ChatPresence">Chat Presence</option>
-            <!-- Identity -->
-            <option value="IdentityChange">Identity Change</option>
-            <!-- Errors -->
-            <option value="CATRefreshError">CAT Refresh Error</option>
-            <!-- Newsletter (WhatsApp Channels) -->
+            <option value="MediaRetry">Media Retry</option>
+            <option value="Message">Message</option>
             <option value="NewsletterJoin">Newsletter Join</option>
             <option value="NewsletterLeave">Newsletter Leave</option>
-            <option value="NewsletterMuteChange">Newsletter Mute Change</option>
             <option value="NewsletterLiveUpdate">Newsletter Live Update</option>
-            <!-- Facebook/Meta Bridge -->
-            <option value="FBMessage">FB Message</option>
-            <!-- Special -->
+            <option value="NewsletterMuteChange">Newsletter Mute Change</option>
+            <option value="OfflineSyncCompleted">Offline Sync Completed</option>
+            <option value="OfflineSyncPreview">Offline Sync Preview</option>
+            <option value="PairError">Pair Error</option>
+            <option value="PairSuccess">Pair Success</option>
+            <option value="Picture">Picture</option>
+            <option value="Presence">Presence</option>
+            <option value="PrivacySettings">Privacy Settings</option>
+            <option value="PushNameSetting">Push Name Setting</option>
+            <option value="QR">QR</option>
+            <option value="QRScannedWithoutMultidevice">QR Scanned Without Multidevice</option>
+            <option value="ReadReceipt">Read Receipt</option>
+            <option value="Receipt">Receipt</option>
+            <option value="StreamError">Stream Error</option>
+            <option value="StreamReplaced">Stream Replaced</option>
+            <option value="TemporaryBan">Temporary Ban</option>
+            <option value="UndecryptableMessage">Undecryptable Message</option>
+            <option value="UserAbout">User About</option>
+            <!-- Additional events to match supportedEventTypes -->
+            <option value="Star">Star</option>
+            <option value="Pin">Pin</option>
+            <option value="Archive">Archive</option>
+            <option value="Mute">Mute</option>
+            <option value="MarkChatAsRead">Mark Chat As Read</option>
+            <option value="ClearChat">Clear Chat</option>
+            <option value="DeleteChat">Delete Chat</option>
+            <option value="DeleteForMe">Delete For Me</option>
+            <option value="LabelAssociationChat">Label Association Chat</option>
+            <option value="LabelAssociationMessage">Label Association Message</option>
+            <option value="LabelEdit">Label Edit</option>
+            <option value="Contact">Contact</option>
+            <option value="PushName">Push Name</option>
+            <option value="BusinessName">Business Name</option>
+            <option value="UserStatusMute">User Status Mute</option>
+            <option value="ManualLoginReconnect">Manual Login Reconnect</option>
+            <option value="CallPreAccept">Call Pre Accept</option>
+            <option value="CallTransport">Call Transport</option>
+            <option value="CallReject">Call Reject</option>
+            <option value="UnknownCallEvent">Unknown Call Event</option>
+            <option value="UnarchiveChatsSetting">Unarchive Chats Setting</option>
             <option value="All">All Events</option>
           </select>
         </div>
@@ -393,6 +523,7 @@
     </div>
     <div class="actions">
       <div class="ui cancel button secondary">Close</div>
+      <div class="ui red button" id="deleteWebhookConfig">Delete</div>
       <div class="ui positive right labeled icon button">Set<i class="checkmark icon"></i></div>
     </div>
   </div>
@@ -454,6 +585,13 @@
           </div>
           <small>Enable for MinIO and some S3-compatible providers.</small>
         </div>
+        <div class="field">
+          <div class="ui toggle checkbox">
+            <input type="checkbox" id="s3DisableACL">
+            <label>Disable ACL</label>
+          </div>
+          <small>Set to true for AWS S3 buckets with 'Bucket owner enforced' Object Ownership.</small>
+        </div>
       </div>
     </div>
     <div class="actions">
@@ -463,28 +601,6 @@
       <div class="ui positive right labeled icon button" id="saveS3Config">Save<i class="checkmark icon"></i></div>
     </div>
   </div>
-
-  <!-- History Configuration Modal -->
-  <div class="ui modal" id="modalHistoryConfig"><i class="close icon"></i>
-    <div class="header"> History Configuration </div>
-    <div class="content">
-      <div class="ui info message">
-        <div class="header">Message History</div>
-        <p>Number of messages to keep in history database. Set to zero to disable history.</p>
-      </div>
-      <div class="ui form">
-        <div class="field" id="messageHistoryField">
-          <label>History</label>
-          <input id="history" type="number" placeholder="0">
-        </div>
-      </div>
-    </div>
-    <div class="actions">
-      <div class="ui cancel button secondary">Cancel</div>
-      <div class="ui positive right labeled icon button" id="saveProxyConfig">Save<i class="checkmark icon"></i></div>
-    </div>
-  </div>
-
 
   <!-- Proxy Configuration Modal -->
   <div class="ui modal" id="modalProxyConfig"><i class="close icon"></i>
@@ -515,48 +631,546 @@
     </div>
   </div>
 
-  <!-- HMAC Configuration Modal -->
-  <div class="ui modal" id="modalHmacConfig"><i class="close icon"></i>
-    <div class="header"> HMAC Configuration </div>
+  <!-- RabbitMQ Configuration Modal -->
+  <div class="ui modal" id="modalRabbitMQConfig"><i class="close icon"></i>
+    <div class="header"> RabbitMQ Configuration </div>
     <div class="content">
       <div class="ui info message">
-        <div class="header">HMAC Key Settings</div>
-        <p>Configure HMAC key for webhook security. This key will be used to verify webhook authenticity.</p>
-      </div>
-      <div class="ui warning message">
-        <div class="header">Important Security Notice</div>
-        <p>
-          <strong>The HMAC key will be hidden after saving for security reasons.</strong><br>
-          • You won't be able to view it again<br>
-          • Save a copy in a secure location before proceeding<br>
-          • If lost, you'll need to generate a new key
-        </p>
+        <div class="header">RabbitMQ Event Publishing</div>
+        <p>Configure RabbitMQ for publishing WhatsApp events. Events will be published to your RabbitMQ server in addition to webhooks.</p>
       </div>
       <div class="ui form">
         <div class="field">
-          <label>HMAC Key</label>
-          <input id="hmacKey" type="password" placeholder="Enter your HMAC key (minimum 32 characters)">
-          <small>Minimum 32 characters for security. Keep this key secret!</small>
+          <label>RabbitMQ URL</label>
+          <input id="rabbitmqUrl" type="text" placeholder="amqp://username:password@localhost:5672/">
+          <small>Complete RabbitMQ connection URL (e.g., amqp://user:pass@localhost:5672/)</small>
+        </div>
+        <div class="two fields">
+          <div class="field">
+            <label>Exchange</label>
+            <input id="rabbitmqExchange" type="text" placeholder="whatsapp.events">
+            <small>Exchange name for publishing events</small>
+          </div>
+          <div class="field">
+            <label>Exchange Type</label>
+            <select class="ui dropdown" id="rabbitmqExchangeType">
+              <option value="topic">Topic</option>
+              <option value="direct">Direct</option>
+              <option value="fanout">Fanout</option>
+              <option value="headers">Headers</option>
+            </select>
+          </div>
+        </div>
+        <div class="two fields">
+          <div class="field">
+            <label>Routing Key</label>
+            <input id="rabbitmqRoutingKey" type="text" placeholder="whatsapp.{event_type}">
+            <small>Routing key pattern (use {event_type} placeholder)</small>
+          </div>
+          <div class="field">
+            <label>Queue</label>
+            <input id="rabbitmqQueue" type="text" placeholder="whatsapp.user.{user_id}">
+            <small>Queue name pattern (use {user_id} placeholder)</small>
+          </div>
         </div>
         <div class="field">
-          <div class="ui buttons">
-            <button class="ui primary button" id="generateHmacKey">
-              <i class="random icon"></i> Generate Random Key
-            </button>
-            <button class="ui black button" id="showHmacKey">
-              <i class="eye icon"></i> Show Key
-            </button>
-            <button class="ui black button" id="hideHmacKey" style="display: none;">
-              <i class="eye slash icon"></i> Hide Key
-            </button>
+          <label>Events to Publish</label>
+          <select class="ui fluid multiple dropdown events-dropdown" id="rabbitmqEvents">
+            <option value="">Select Events</option>
+            <option value="AppState">App State</option>
+            <option value="AppStateSyncComplete">App State Sync Complete</option>
+            <option value="Blocklist">Blocklist</option>
+            <option value="BlocklistChange">Blocklist Change</option>
+            <option value="CallAccept">Call Accept</option>
+            <option value="CallOffer">Call Offer</option>
+            <option value="CallOfferNotice">Call Offer Notice</option>
+            <option value="CallRelayLatency">Call Relay Latency</option>
+            <option value="CallTerminate">Call Terminate</option>
+            <option value="CATRefreshError">CAT Refresh Error</option>
+            <option value="ChatPresence">Chat Presence</option>
+            <option value="ClientOutdated">Client Outdated</option>
+            <option value="Connected">Connected</option>
+            <option value="ConnectFailure">Connect Failure</option>
+            <option value="Disconnected">Disconnected</option>
+            <option value="FBMessage">FB Message</option>
+            <option value="GroupInfo">Group Info</option>
+            <option value="HistorySync">History Sync</option>
+            <option value="IdentityChange">Identity Change</option>
+            <option value="JoinedGroup">Joined Group</option>
+            <option value="KeepAliveRestored">Keep Alive Restored</option>
+            <option value="KeepAliveTimeout">Keep Alive Timeout</option>
+            <option value="LoggedOut">Logged Out</option>
+            <option value="MediaRetry">Media Retry</option>
+            <option value="Message">Message</option>
+            <option value="NewsletterJoin">Newsletter Join</option>
+            <option value="NewsletterLeave">Newsletter Leave</option>
+            <option value="NewsletterLiveUpdate">Newsletter Live Update</option>
+            <option value="NewsletterMuteChange">Newsletter Mute Change</option>
+            <option value="OfflineSyncCompleted">Offline Sync Completed</option>
+            <option value="OfflineSyncPreview">Offline Sync Preview</option>
+            <option value="PairError">Pair Error</option>
+            <option value="PairSuccess">Pair Success</option>
+            <option value="Picture">Picture</option>
+            <option value="Presence">Presence</option>
+            <option value="PrivacySettings">Privacy Settings</option>
+            <option value="PushNameSetting">Push Name Setting</option>
+            <option value="QR">QR</option>
+            <option value="QRScannedWithoutMultidevice">QR Scanned Without Multidevice</option>
+            <option value="ReadReceipt">Read Receipt</option>
+            <option value="Receipt">Receipt</option>
+            <option value="StreamError">Stream Error</option>
+            <option value="StreamReplaced">Stream Replaced</option>
+            <option value="TemporaryBan">Temporary Ban</option>
+            <option value="UndecryptableMessage">Undecryptable Message</option>
+            <option value="UserAbout">User About</option>
+            <!-- Additional events to match supportedEventTypes -->
+            <option value="Star">Star</option>
+            <option value="Pin">Pin</option>
+            <option value="Archive">Archive</option>
+            <option value="Mute">Mute</option>
+            <option value="MarkChatAsRead">Mark Chat As Read</option>
+            <option value="ClearChat">Clear Chat</option>
+            <option value="DeleteChat">Delete Chat</option>
+            <option value="DeleteForMe">Delete For Me</option>
+            <option value="LabelAssociationChat">Label Association Chat</option>
+            <option value="LabelAssociationMessage">Label Association Message</option>
+            <option value="LabelEdit">Label Edit</option>
+            <option value="Contact">Contact</option>
+            <option value="PushName">Push Name</option>
+            <option value="BusinessName">Business Name</option>
+            <option value="UserStatusMute">User Status Mute</option>
+            <option value="ManualLoginReconnect">Manual Login Reconnect</option>
+            <option value="CallPreAccept">Call Pre Accept</option>
+            <option value="CallTransport">Call Transport</option>
+            <option value="CallReject">Call Reject</option>
+            <option value="UnknownCallEvent">Unknown Call Event</option>
+            <option value="UnarchiveChatsSetting">Unarchive Chats Setting</option>
+            <option value="All">All Events</option>
+          </select>
+          <small>Select which events to publish to RabbitMQ</small>
+        </div>
+        <h4 class="ui dividing header">Advanced Settings (Optional)</h4>
+        <div class="two fields">
+          <div class="field">
+            <label>Connection Pool Size</label>
+            <input id="rabbitmqConnectionPoolSize" type="number" min="1" placeholder="e.g., 2">
+            <small>Number of connections in the pool (leave empty to use default)</small>
+          </div>
+          <div class="field">
+            <label>Worker Count</label>
+            <input id="rabbitmqWorkerCount" type="number" min="1" placeholder="e.g., 4">
+            <small>Number of publisher workers (leave empty to use default)</small>
+          </div>
+        </div>
+        <div class="two fields">
+          <div class="field">
+            <label>Queue Buffer Size</label>
+            <input id="rabbitmqQueueBufferSize" type="number" min="1" placeholder="e.g., 1024">
+            <small>Internal publish queue size (leave empty to use default)</small>
+          </div>
+          <div class="field">
+            <label>Batch Size</label>
+            <input id="rabbitmqBatchSize" type="number" min="1" placeholder="e.g., 50">
+            <small>Messages per batch for publishing (leave empty to use default)</small>
+          </div>
+        </div>
+        <div class="two fields">
+          <div class="field">
+            <label>Batch Timeout (ms)</label>
+            <input id="rabbitmqBatchTimeoutMs" type="number" min="0" placeholder="e.g., 200">
+            <small>Max time to wait before publishing a partial batch</small>
+          </div>
+          <div class="field">
+            <label>Publish Timeout (ms)</label>
+            <input id="rabbitmqPublishTimeoutMs" type="number" min="1" placeholder="e.g., 5000">
+            <small>Max time to wait for broker to accept publish</small>
+          </div>
+        </div>
+        <div class="two fields">
+          <div class="field">
+            <label>Max Retries</label>
+            <input id="rabbitmqMaxRetries" type="number" min="0" placeholder="e.g., 5">
+            <small>Max publish retries on failure</small>
+          </div>
+          <div class="field">
+            <label>Retry Delay (ms)</label>
+            <input id="rabbitmqRetryDelayMs" type="number" min="0" placeholder="e.g., 1000">
+            <small>Delay between retries in milliseconds</small>
+          </div>
+        </div>
+        <div class="two fields">
+          <div class="field">
+            <label>Queue Type</label>
+            <select class="ui dropdown" id="rabbitmqQueueType">
+              <option value="classic">Classic</option>
+              <option value="quorum">Quorum</option>
+              <option value="stream">Stream</option>
+            </select>
+            <small>RabbitMQ queue type for performance optimization</small>
+          </div>
+          <div class="field">
+            <label>Delivery Mode</label>
+            <select class="ui dropdown" id="rabbitmqDeliveryMode">
+              <option value="1">Non-Persistent (1)</option>
+              <option value="2">Persistent (2)</option>
+            </select>
+            <small>Message persistence mode</small>
+          </div>
+        </div>
+        <div class="two fields">
+          <div class="field">
+            <div class="ui toggle checkbox">
+              <input type="checkbox" id="rabbitmqDurable" checked>
+              <label>Durable</label>
+            </div>
+            <small>Make exchange and queue durable</small>
+          </div>
+          <div class="field">
+            <div class="ui toggle checkbox">
+              <input type="checkbox" id="rabbitmqAutoDelete">
+              <label>Auto Delete</label>
+            </div>
+            <small>Auto-delete when unused</small>
+          </div>
+        </div>
+        <div class="two fields">
+          <div class="field">
+            <div class="ui toggle checkbox">
+              <input type="checkbox" id="rabbitmqExclusive">
+              <label>Exclusive</label>
+            </div>
+            <small>Exclusive queue (only this connection)</small>
+          </div>
+          <div class="field">
+            <div class="ui toggle checkbox">
+              <input type="checkbox" id="rabbitmqNoWait">
+              <label>No Wait</label>
+            </div>
+            <small>No-wait flag for faster operations</small>
           </div>
         </div>
       </div>
     </div>
     <div class="actions">
       <div class="ui cancel button secondary">Cancel</div>
-      <div class="ui red button" id="deleteHmacConfig">Delete Configuration</div>
-      <div class="ui positive right labeled icon button" id="saveHmacConfig">Save<i class="checkmark icon"></i></div>
+      <div class="ui button" id="testRabbitMQConnection">Test Connection</div>
+      <div class="ui red button" id="deleteRabbitMQConfig" style="display: none;">Delete Configuration</div>
+      <div class="ui positive right labeled icon button" id="saveRabbitMQConfig">Save<i class="checkmark icon"></i></div>
+    </div>
+  </div>
+
+  <!-- Skip Media Download Configuration Modal -->
+  <div class="ui modal" id="modalSkipMediaConfig"><i class="close icon"></i>
+    <div class="header">Skip Media Download Configuration</div>
+    <div class="content">
+      <div class="ui info message">
+        <div class="header">Media Download Control</div>
+        <p>Configure whether to skip downloading media content (images, videos, audio, documents, stickers) in WhatsApp events. When enabled, events will be sent without base64 content or S3 uploads, improving performance for high-volume scenarios.</p>
+      </div>
+      <div class="ui form">
+        <div class="field">
+          <div class="ui toggle checkbox" id="skipMediaDownloadToggle">
+            <input type="checkbox" id="skipMediaDownload">
+            <label>Skip Media Download</label>
+          </div>
+          <small>When enabled, media files will not be downloaded, converted to base64, or uploaded to S3. Events will only contain the original WhatsApp metadata.</small>
+        </div>
+        <div class="ui warning message" id="skipMediaWarning" style="display: none;">
+          <div class="header">Warning</div>
+          <p>When skip media download is enabled:</p>
+          <ul>
+            <li>No base64 content will be included in events</li>
+            <li>No S3 uploads will be performed</li>
+            <li>Only WhatsApp metadata will be available</li>
+            <li>This setting overrides any S3 configuration for media delivery</li>
+          </ul>
+        </div>
+        <div class="ui positive message" id="skipMediaBenefit" style="display: none;">
+          <div class="header">Benefits</div>
+          <p>Enabling skip media download provides:</p>
+          <ul>
+            <li>Faster event processing</li>
+            <li>Reduced bandwidth usage</li>
+            <li>Lower storage requirements</li>
+            <li>Better performance for high-volume scenarios</li>
+          </ul>
+        </div>
+        <div class="ui info message">
+          <div class="header">Global Configuration</div>
+          <p><strong>Global Skip Media:</strong> <span id="globalSkipMediaStatus">Loading...</span></p>
+          <small>This shows the server-wide setting. Individual user settings override the global configuration.</small>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button secondary">Cancel</div>
+      <div class="ui positive right labeled icon button" id="saveSkipMediaConfig">Save<i class="checkmark icon"></i></div>
+    </div>
+  </div>
+
+  <!-- Skip Groups Configuration Modal -->
+  <div class="ui modal" id="modalSkipGroupsConfig"><i class="close icon"></i>
+    <div class="header">Skip Groups Configuration</div>
+    <div class="content">
+      <div class="ui message">
+        <div class="header">Skip Groups Processing</div>
+        <p>Configure whether to skip processing messages from WhatsApp groups. When enabled, the system will ignore all messages from group chats, processing only direct messages. This can improve performance and reduce processing overhead for applications that don't need group functionality.</p>
+      </div>
+
+      <div class="ui form">
+        <div class="field">
+          <div class="ui toggle checkbox" id="skipGroupsToggle">
+            <input type="checkbox" id="skipGroups">
+            <label>Skip Groups Processing</label>
+          </div>
+          <small>Enable to skip processing messages from WhatsApp groups</small>
+        </div>
+
+        <div class="ui warning message" id="skipGroupsWarning" style="display: none;">
+          <div class="header">Warning</div>
+          <p>When skip groups processing is enabled:</p>
+          <ul>
+            <li>All messages from WhatsApp groups will be ignored</li>
+            <li>Only direct messages (1-on-1 chats) will be processed</li>
+            <li>Group events (join, leave, admin changes) will not be sent to webhooks</li>
+            <li>This setting affects all group-related functionality</li>
+          </ul>
+        </div>
+
+        <div class="ui positive message" id="skipGroupsBenefit" style="display: none;">
+          <div class="header">Benefits</div>
+          <p>Enabling skip groups processing provides:</p>
+          <ul>
+            <li>Improved performance for high-volume scenarios</li>
+            <li>Reduced processing overhead and resource usage</li>
+            <li>Lower webhook traffic and database load</li>
+            <li>Focus on direct customer communications</li>
+          </ul>
+        </div>
+
+        <div class="ui info message">
+          <p><strong>Current Status:</strong> <span id="skipGroupsCurrentStatus">Loading...</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button">Cancel</div>
+      <div class="ui positive right labeled icon button" id="saveSkipGroupsConfig">Save<i class="checkmark icon"></i></div>
+    </div>
+  </div>
+
+  <!-- Skip Own Messages Configuration Modal -->
+  <div class="ui modal" id="modalSkipOwnMessagesConfig"><i class="close icon"></i>
+    <div class="header">Skip Own Messages Configuration</div>
+    <div class="content">
+      <div class="ui relaxed divided list">
+        <div class="header">Skip Own Messages Processing</div>
+        <p>Configure whether to skip processing your own sent messages (IsFromMe: true). When enabled, the system will ignore all messages that were sent by you, processing only messages received from others. This can improve performance and reduce processing overhead for applications that don't need to track outgoing messages.</p>
+      </div>
+      <div class="ui segment">
+        <div class="ui toggle checkbox" id="skipOwnMessagesToggle">
+          <input type="checkbox" id="skipOwnMessages">
+          <label>Skip Own Messages Processing</label>
+        </div>
+        <small>Enable to skip processing messages sent by yourself</small>
+      </div>
+      <div class="ui warning message" id="skipOwnMessagesWarning" style="display: none;">
+        <i class="warning icon"></i>
+        <p>When skip own messages processing is enabled:</p>
+        <ul>
+          <li>Outgoing messages you send will NOT trigger webhook events</li>
+          <li>Message delivery confirmations and read receipts for your messages will still be processed</li>
+          <li>This affects only message content events, not connection or status events</li>
+          <li>Can reduce event volume by 30-50% for applications with heavy outgoing message activity</li>
+        </ul>
+      </div>
+      <div class="ui positive message" id="skipOwnMessagesBenefit" style="display: none;">
+        <i class="lightbulb icon"></i>
+        <p>Enabling skip own messages processing provides:</p>
+        <ul>
+          <li><strong>Reduced processing overhead</strong> - Fewer events to handle</li>
+          <li><strong>Cleaner event logs</strong> - Focus on incoming messages only</li>
+          <li><strong>Improved performance</strong> - Less bandwidth and processing power used</li>
+          <li><strong>Better application design</strong> - Separation between sending and receiving flows</li>
+        </ul>
+      </div>
+      <div class="ui info message">
+        <i class="info circle icon"></i>
+        <p><strong>Current Status:</strong> <span id="skipOwnMessagesCurrentStatus">Loading...</span></p>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui black deny button">Cancel</div>
+      <div class="ui positive right labeled icon button" id="saveSkipOwnMessagesConfig">Save<i class="checkmark icon"></i></div>
+    </div>
+  </div>
+
+  <!-- Skip Calls Configuration Modal -->
+  <div class="ui modal" id="modalSkipCallsConfig"><i class="close icon"></i>
+    <div class="header">Skip Calls Configuration</div>
+    <div class="content">
+      <div class="ui message">
+        <div class="header">Automatic Call Rejection</div>
+        <p>Configure automatic call rejection settings. When enabled, all incoming WhatsApp calls will be automatically rejected and an optional custom message will be sent to the caller. This feature is perfect for business accounts that prefer text-based communication.</p>
+      </div>
+
+      <div class="ui form">
+        <div class="field">
+          <div class="ui toggle checkbox" id="skipCallsToggle">
+            <input type="checkbox" id="skipCalls">
+            <label>Enable Automatic Call Rejection</label>
+          </div>
+          <small>Enable to automatically reject all incoming calls</small>
+        </div>
+
+        <div class="field">
+          <label>Rejection Message</label>
+          <textarea id="callRejectMessage" rows="3" placeholder="Sorry, I cannot take calls at the moment. Please send a message.">Sorry, I cannot take calls at the moment.</textarea>
+          <small>Message sent to callers after rejecting their call (optional)</small>
+        </div>
+
+        <div class="field">
+          <label>Rejection Type</label>
+          <select id="callRejectType" class="ui fluid dropdown">
+            <option value="busy">Busy</option>
+            <option value="declined">Declined</option>
+            <option value="unavailable">Unavailable</option>
+          </select>
+          <small>Type of call rejection to use</small>
+        </div>
+
+        <div class="ui warning message" id="skipCallsWarning" style="display: none;">
+          <div class="header">Warning</div>
+          <p>When automatic call rejection is enabled:</p>
+          <ul>
+            <li>All incoming calls will be automatically rejected</li>
+            <li>Callers will receive the configured rejection message</li>
+            <li>Call events will still be logged for monitoring purposes</li>
+            <li>This setting affects all incoming calls regardless of contact</li>
+          </ul>
+        </div>
+
+        <div class="ui positive message" id="skipCallsBenefit" style="display: none;">
+          <div class="header">Benefits</div>
+          <p>Enabling automatic call rejection provides:</p>
+          <ul>
+            <li>Consistent text-based communication workflow</li>
+            <li>Automatic professional response to callers</li>
+            <li>Reduced interruptions during business hours</li>
+            <li>Better customer service through messaging</li>
+          </ul>
+        </div>
+
+        <div class="ui info message">
+          <p><strong>Current Status:</strong> <span id="skipCallsCurrentStatus">Loading...</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button">Cancel</div>
+      <div class="ui positive right labeled icon button" id="saveSkipCallsConfig">Save<i class="checkmark icon"></i></div>
+    </div>
+  </div>
+
+  <!-- Skip Newsletters Configuration Modal -->
+  <div class="ui modal" id="modalSkipNewslettersConfig"><i class="close icon"></i>
+    <div class="header">Skip Newsletters Configuration</div>
+    <div class="content">
+      <div class="ui message">
+        <div class="header">Skip Newsletters Processing</div>
+        <p>Configure whether to skip processing messages from WhatsApp newsletters and channels. When enabled, the system will ignore all messages from newsletter channels, processing only direct messages and group messages. This can improve performance and reduce processing overhead for applications that don't need newsletter functionality.</p>
+      </div>
+
+      <div class="ui form">
+        <div class="field">
+          <div class="ui toggle checkbox" id="skipNewslettersToggle">
+            <input type="checkbox" id="skipNewsletters">
+            <label>Skip Newsletters Processing</label>
+          </div>
+          <small>Enable to skip processing messages from WhatsApp newsletters</small>
+        </div>
+
+        <div class="ui warning message" id="skipNewslettersWarning" style="display: none;">
+          <div class="header">Warning</div>
+          <p>When skip newsletters processing is enabled:</p>
+          <ul>
+            <li>All messages from WhatsApp newsletters will be ignored</li>
+            <li>Newsletter subscription events will not be sent to webhooks</li>
+            <li>Newsletter reactions and interactions will be skipped</li>
+            <li>This setting affects all newsletter-related functionality</li>
+          </ul>
+        </div>
+
+        <div class="ui positive message" id="skipNewslettersBenefit" style="display: none;">
+          <div class="header">Benefits</div>
+          <p>Enabling skip newsletters processing provides:</p>
+          <ul>
+            <li>Reduced processing overhead for newsletter content</li>
+            <li>Lower webhook traffic and database load</li>
+            <li>Focus on direct customer communications</li>
+            <li>Improved performance for customer service applications</li>
+          </ul>
+        </div>
+
+        <div class="ui info message">
+          <p><strong>Current Status:</strong> <span id="skipNewslettersCurrentStatus">Loading...</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button">Cancel</div>
+      <div class="ui positive right labeled icon button" id="saveSkipNewslettersConfig">Save<i class="checkmark icon"></i></div>
+    </div>
+  </div>
+
+  <!-- Skip Broadcasts Configuration Modal -->
+  <div class="ui modal" id="modalSkipBroadcastsConfig"><i class="close icon"></i>
+    <div class="header">Skip Broadcasts Configuration</div>
+    <div class="content">
+      <div class="ui message">
+        <div class="header">Skip Broadcasts Processing</div>
+        <p>Configure whether to skip processing messages from WhatsApp broadcasts and status updates. When enabled, the system will ignore all messages from broadcast lists and status broadcasts, processing only direct messages, group messages, and newsletters. This can improve performance and reduce processing overhead.</p>
+      </div>
+
+      <div class="ui form">
+        <div class="field">
+          <div class="ui toggle checkbox" id="skipBroadcastsToggle">
+            <input type="checkbox" id="skipBroadcasts">
+            <label>Skip Broadcasts Processing</label>
+          </div>
+          <small>Enable to skip processing messages from WhatsApp broadcasts</small>
+        </div>
+
+        <div class="ui warning message" id="skipBroadcastsWarning" style="display: none;">
+          <div class="header">Warning</div>
+          <p>When skip broadcasts processing is enabled:</p>
+          <ul>
+            <li>All messages from WhatsApp broadcast lists will be ignored</li>
+            <li>Status broadcast messages will not be processed</li>
+            <li>Broadcast-related events will not be sent to webhooks</li>
+            <li>This setting affects all broadcast-related functionality</li>
+          </ul>
+        </div>
+
+        <div class="ui positive message" id="skipBroadcastsBenefit" style="display: none;">
+          <div class="header">Benefits</div>
+          <p>Enabling skip broadcasts processing provides:</p>
+          <ul>
+            <li>Reduced processing overhead for broadcast content</li>
+            <li>Lower webhook traffic and database load</li>
+            <li>Focus on direct customer communications</li>
+            <li>Improved performance for business applications</li>
+          </ul>
+        </div>
+
+        <div class="ui info message">
+          <p><strong>Current Status:</strong> <span id="skipBroadcastsCurrentStatus">Loading...</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button">Cancel</div>
+      <div class="ui positive right labeled icon button" id="saveSkipBroadcastsConfig">Save<i class="checkmark icon"></i></div>
     </div>
   </div>
 
@@ -581,73 +1195,79 @@
           <input type="url" name="webhook_url" placeholder="https://example.com/webhook">
         </div>
         <div class="field">
-          <label>Events <span class="required">*</span></label>
-          <select name="events" id="webhookEventsInstance" class="ui fluid dropdown" multiple="" required>
+          <label>Events</label>
+          <select name="events" id="webhookEventsInstance" class="ui fluid dropdown events-dropdown" multiple="">
             <option value="">Select Events</option>
-            <!-- Messages and Communication -->
-            <option value="Message">Message</option>
-            <option value="UndecryptableMessage">Undecryptable Message</option>
-            <option value="Receipt">Receipt</option>
-            <option value="MediaRetry">Media Retry</option>
-            <!-- Groups and Contacts -->
-            <option value="GroupInfo">Group Info</option>
-            <option value="JoinedGroup">Joined Group</option>
-            <option value="Picture">Picture</option>
-            <option value="BlocklistChange">Blocklist Change</option>
+            <option value="AppState">App State</option>
+            <option value="AppStateSyncComplete">App State Sync Complete</option>
             <option value="Blocklist">Blocklist</option>
-            <!-- Connection and Session -->
+            <option value="BlocklistChange">Blocklist Change</option>
+            <option value="CallAccept">Call Accept</option>
+            <option value="CallOffer">Call Offer</option>
+            <option value="CallOfferNotice">Call Offer Notice</option>
+            <option value="CallRelayLatency">Call Relay Latency</option>
+            <option value="CallTerminate">Call Terminate</option>
+            <option value="CATRefreshError">CAT Refresh Error</option>
+            <option value="ChatPresence">Chat Presence</option>
+            <option value="ClientOutdated">Client Outdated</option>
             <option value="Connected">Connected</option>
-            <option value="Disconnected">Disconnected</option>
             <option value="ConnectFailure">Connect Failure</option>
+            <option value="Disconnected">Disconnected</option>
+            <option value="FBMessage">FB Message</option>
+            <option value="GroupInfo">Group Info</option>
+            <option value="HistorySync">History Sync</option>
+            <option value="IdentityChange">Identity Change</option>
+            <option value="JoinedGroup">Joined Group</option>
             <option value="KeepAliveRestored">Keep Alive Restored</option>
             <option value="KeepAliveTimeout">Keep Alive Timeout</option>
             <option value="LoggedOut">Logged Out</option>
-            <option value="ClientOutdated">Client Outdated</option>
-            <option value="TemporaryBan">Temporary Ban</option>
-            <option value="StreamError">Stream Error</option>
-            <option value="StreamReplaced">Stream Replaced</option>
-            <option value="PairSuccess">Pair Success</option>
-            <option value="PairError">Pair Error</option>
-            <option value="QR">QR</option>
-            <option value="QRScannedWithoutMultidevice">QR Scanned Without Multidevice</option>
-            <!-- Privacy and Settings -->
-            <option value="PrivacySettings">Privacy Settings</option>
-            <option value="PushNameSetting">Push Name Setting</option>
-            <option value="UserAbout">User About</option>
-            <!-- Synchronization and State -->
-            <option value="AppState">App State</option>
-            <option value="AppStateSyncComplete">App State Sync Complete</option>
-            <option value="HistorySync">History Sync</option>
-            <option value="OfflineSyncCompleted">Offline Sync Completed</option>
-            <option value="OfflineSyncPreview">Offline Sync Preview</option>
-            <!-- Calls -->
-            <option value="CallOffer">Call Offer</option>
-            <option value="CallAccept">Call Accept</option>
-            <option value="CallTerminate">Call Terminate</option>
-            <option value="CallOfferNotice">Call Offer Notice</option>
-            <option value="CallRelayLatency">Call Relay Latency</option>
-            <!-- Presence and Activity -->
-            <option value="Presence">Presence</option>
-            <option value="ChatPresence">Chat Presence</option>
-            <!-- Identity -->
-            <option value="IdentityChange">Identity Change</option>
-            <!-- Errors -->
-            <option value="CATRefreshError">CAT Refresh Error</option>
-            <!-- Newsletter (WhatsApp Channels) -->
+            <option value="MediaRetry">Media Retry</option>
+            <option value="Message">Message</option>
             <option value="NewsletterJoin">Newsletter Join</option>
             <option value="NewsletterLeave">Newsletter Leave</option>
-            <option value="NewsletterMuteChange">Newsletter Mute Change</option>
             <option value="NewsletterLiveUpdate">Newsletter Live Update</option>
-            <!-- Facebook/Meta Bridge -->
-            <option value="FBMessage">FB Message</option>
-            <!-- Special -->
+            <option value="NewsletterMuteChange">Newsletter Mute Change</option>
+            <option value="OfflineSyncCompleted">Offline Sync Completed</option>
+            <option value="OfflineSyncPreview">Offline Sync Preview</option>
+            <option value="PairError">Pair Error</option>
+            <option value="PairSuccess">Pair Success</option>
+            <option value="Picture">Picture</option>
+            <option value="Presence">Presence</option>
+            <option value="PrivacySettings">Privacy Settings</option>
+            <option value="PushNameSetting">Push Name Setting</option>
+            <option value="QR">QR</option>
+            <option value="QRScannedWithoutMultidevice">QR Scanned Without Multidevice</option>
+            <option value="ReadReceipt">Read Receipt</option>
+            <option value="Receipt">Receipt</option>
+            <option value="StreamError">Stream Error</option>
+            <option value="StreamReplaced">Stream Replaced</option>
+            <option value="TemporaryBan">Temporary Ban</option>
+            <option value="UndecryptableMessage">Undecryptable Message</option>
+            <option value="UserAbout">User About</option>
+            <!-- Additional events to match supportedEventTypes -->
+            <option value="Star">Star</option>
+            <option value="Pin">Pin</option>
+            <option value="Archive">Archive</option>
+            <option value="Mute">Mute</option>
+            <option value="MarkChatAsRead">Mark Chat As Read</option>
+            <option value="ClearChat">Clear Chat</option>
+            <option value="DeleteChat">Delete Chat</option>
+            <option value="DeleteForMe">Delete For Me</option>
+            <option value="LabelAssociationChat">Label Association Chat</option>
+            <option value="LabelAssociationMessage">Label Association Message</option>
+            <option value="LabelEdit">Label Edit</option>
+            <option value="Contact">Contact</option>
+            <option value="PushName">Push Name</option>
+            <option value="BusinessName">Business Name</option>
+            <option value="UserStatusMute">User Status Mute</option>
+            <option value="ManualLoginReconnect">Manual Login Reconnect</option>
+            <option value="CallPreAccept">Call Pre Accept</option>
+            <option value="CallTransport">Call Transport</option>
+            <option value="CallReject">Call Reject</option>
+            <option value="UnknownCallEvent">Unknown Call Event</option>
+            <option value="UnarchiveChatsSetting">Unarchive Chats Setting</option>
             <option value="All">All Events</option>
           </select>
-        </div>
-        <div class="field">
-          <label>Message History</label>
-          <input type="number" name="history" min="0" value="0" placeholder="0">
-          <small>Number of messages to store in history per chat for this instance. Set to 0 to disable message history.</small>
         </div>
 
         <!-- Proxy Configuration -->
@@ -709,7 +1329,7 @@
           <div class="two fields">
             <div class="field">
               <label>Media Delivery</label>
-              <select class="ui dropdown" name="s3_media_delivery" id="addInstanceS3MediaDelivery">
+              <select class="ui dropdown" name="media_delivery" id="addInstanceS3MediaDelivery">
                 <option value="base64">Base64 (Default)</option>
                 <option value="s3">S3 URL only</option>
                 <option value="both">Both Base64 and S3 URL</option>
@@ -729,42 +1349,451 @@
             </div>
             <small>Enable for MinIO and some S3-compatible providers.</small>
           </div>
+          <div class="field">
+            <div class="ui toggle checkbox">
+              <input type="checkbox" name="s3_disable_acl">
+              <label>Disable ACL</label>
+            </div>
+            <small>Set to true for AWS S3 buckets with 'Bucket owner enforced' Object Ownership.</small>
+          </div>
         </div>
 
-        <!-- HMAC Configuration -->
-        <h4 class="ui dividing header">HMAC Configuration (Optional)</h4>
+        <!-- RabbitMQ Configuration -->
+        <h4 class="ui dividing header">RabbitMQ Configuration (Optional)</h4>
         <div class="field">
-          <div class="ui toggle checkbox" id="addInstanceHmacToggle">
-            <input type="checkbox" name="hmac_enabled">
-            <label>Enable HMAC Key</label>
+          <div class="ui toggle checkbox" id="addInstanceRabbitMQToggle">
+            <input type="checkbox" name="rabbitmq_enabled">
+            <label>Enable RabbitMQ</label>
           </div>
-          <small>Enable HMAC key for webhook security</small>
+          <small>Enable RabbitMQ for publishing WhatsApp events</small>
         </div>
-        <div class="ui warning message" id="addInstanceHmacKeyWarningMessage" style="display: none;">
-          <div class="header">Important Security Notice</div>
-          <p>
-            <strong>The HMAC key will be hidden after saving for security reasons.</strong><br>
-            • You won't be able to view it again<br>
-            • Save a copy in a secure location before proceeding<br>
-            • If lost, you'll need to generate a new key
-          </p>
-        </div>
-        <div class="field"
-         id="addInstanceHmacKeyField" style="display: none;">
-          <label>HMAC Key</label>
-          <input type="password" name="hmac_key" placeholder="Enter HMAC key (minimum 32 characters)">
-          <small>Minimum 32 characters for security. Keep this key secret!</small>
-          <div class="ui buttons" style="margin-top: 10px;">
-            <button type="button" class="ui primary button" id="generateHmacKeyInstance">
-              <i class="random icon"></i> Generate Random Key
-            </button>
-            <button type="button" class="ui black button" id="showHmacKeyInstance">
-              <i class="eye icon"></i> Show Key
-            </button>
-            <button type="button" class="ui black button" id="hideHmacKeyInstance" style="display: none;">
-              <i class="eye slash icon"></i> Hide Key
-            </button>
+        <div id="addInstanceRabbitMQFields" style="display: none;">
+          <div class="field">
+            <label>RabbitMQ URL</label>
+            <input type="text" name="rabbitmq_url" placeholder="amqp://username:password@localhost:5672/">
+            <small>Complete RabbitMQ connection URL (e.g., amqp://user:pass@localhost:5672/)</small>
           </div>
+          <div class="two fields">
+            <div class="field">
+              <label>Exchange</label>
+              <input type="text" name="rabbitmq_exchange" placeholder="whatsapp.events">
+              <small>Exchange name for publishing events</small>
+            </div>
+            <div class="field">
+              <label>Exchange Type</label>
+              <select class="ui dropdown" name="rabbitmq_exchange_type" id="addInstanceRabbitMQExchangeType">
+                <option value="topic">Topic</option>
+                <option value="direct">Direct</option>
+                <option value="fanout">Fanout</option>
+                <option value="headers">Headers</option>
+              </select>
+            </div>
+          </div>
+          <div class="two fields">
+            <div class="field">
+              <label>Routing Key</label>
+              <input type="text" name="rabbitmq_routing_key" placeholder="whatsapp.{event_type}">
+              <small>Routing key pattern (use {event_type} placeholder)</small>
+            </div>
+            <div class="field">
+              <label>Queue</label>
+              <input type="text" name="rabbitmq_queue" placeholder="whatsapp.user.{user_id}">
+              <small>Queue name pattern (use {user_id} placeholder)</small>
+            </div>
+          </div>
+          <div class="field">
+            <label>Events to Publish</label>
+            <select class="ui fluid multiple dropdown events-dropdown" name="rabbitmq_events" id="addInstanceRabbitMQEvents">
+              <option value="">Select Events</option>
+              <option value="AppState">App State</option>
+              <option value="AppStateSyncComplete">App State Sync Complete</option>
+              <option value="Blocklist">Blocklist</option>
+              <option value="BlocklistChange">Blocklist Change</option>
+              <option value="CallAccept">Call Accept</option>
+              <option value="CallOffer">Call Offer</option>
+              <option value="CallOfferNotice">Call Offer Notice</option>
+              <option value="CallRelayLatency">Call Relay Latency</option>
+              <option value="CallTerminate">Call Terminate</option>
+              <option value="CATRefreshError">CAT Refresh Error</option>
+              <option value="ChatPresence">Chat Presence</option>
+              <option value="ClientOutdated">Client Outdated</option>
+              <option value="Connected">Connected</option>
+              <option value="ConnectFailure">Connect Failure</option>
+              <option value="Disconnected">Disconnected</option>
+              <option value="FBMessage">FB Message</option>
+              <option value="GroupInfo">Group Info</option>
+              <option value="HistorySync">History Sync</option>
+              <option value="IdentityChange">Identity Change</option>
+              <option value="JoinedGroup">Joined Group</option>
+              <option value="KeepAliveRestored">Keep Alive Restored</option>
+              <option value="KeepAliveTimeout">Keep Alive Timeout</option>
+              <option value="LoggedOut">Logged Out</option>
+              <option value="MediaRetry">Media Retry</option>
+              <option value="Message">Message</option>
+              <option value="NewsletterJoin">Newsletter Join</option>
+              <option value="NewsletterLeave">Newsletter Leave</option>
+              <option value="NewsletterLiveUpdate">Newsletter Live Update</option>
+              <option value="NewsletterMuteChange">Newsletter Mute Change</option>
+              <option value="OfflineSyncCompleted">Offline Sync Completed</option>
+              <option value="OfflineSyncPreview">Offline Sync Preview</option>
+              <option value="PairError">Pair Error</option>
+              <option value="PairSuccess">Pair Success</option>
+              <option value="Picture">Picture</option>
+              <option value="Presence">Presence</option>
+              <option value="PrivacySettings">Privacy Settings</option>
+              <option value="PushNameSetting">Push Name Setting</option>
+              <option value="QR">QR</option>
+              <option value="QRScannedWithoutMultidevice">QR Scanned Without Multidevice</option>
+              <option value="ReadReceipt">Read Receipt</option>
+              <option value="Receipt">Receipt</option>
+              <option value="StreamError">Stream Error</option>
+              <option value="StreamReplaced">Stream Replaced</option>
+              <option value="TemporaryBan">Temporary Ban</option>
+              <option value="UndecryptableMessage">Undecryptable Message</option>
+              <option value="UserAbout">User About</option>
+              <!-- Additional events to match supportedEventTypes -->
+              <option value="Star">Star</option>
+              <option value="Pin">Pin</option>
+              <option value="Archive">Archive</option>
+              <option value="Mute">Mute</option>
+              <option value="MarkChatAsRead">Mark Chat As Read</option>
+              <option value="ClearChat">Clear Chat</option>
+              <option value="DeleteChat">Delete Chat</option>
+              <option value="DeleteForMe">Delete For Me</option>
+              <option value="LabelAssociationChat">Label Association Chat</option>
+              <option value="LabelAssociationMessage">Label Association Message</option>
+              <option value="LabelEdit">Label Edit</option>
+              <option value="Contact">Contact</option>
+              <option value="PushName">Push Name</option>
+              <option value="BusinessName">Business Name</option>
+              <option value="UserStatusMute">User Status Mute</option>
+              <option value="ManualLoginReconnect">Manual Login Reconnect</option>
+              <option value="CallPreAccept">Call Pre Accept</option>
+              <option value="CallTransport">Call Transport</option>
+              <option value="CallReject">Call Reject</option>
+              <option value="UnknownCallEvent">Unknown Call Event</option>
+              <option value="UnarchiveChatsSetting">Unarchive Chats Setting</option>
+              <option value="All">All Events</option>
+            </select>
+            <small>Select which events to publish to RabbitMQ</small>
+          </div>
+          <div class="two fields">
+            <div class="field">
+              <label>Queue Type</label>
+              <select class="ui dropdown" name="rabbitmq_queue_type" id="addInstanceRabbitMQQueueType">
+                <option value="classic">Classic</option>
+                <option value="quorum">Quorum</option>
+                <option value="stream">Stream</option>
+              </select>
+              <small>RabbitMQ queue type for performance optimization</small>
+            </div>
+            <div class="field">
+              <label>Delivery Mode</label>
+              <select class="ui dropdown" name="rabbitmq_delivery_mode" id="addInstanceRabbitMQDeliveryMode">
+                <option value="1">Non-Persistent (1)</option>
+                <option value="2">Persistent (2)</option>
+              </select>
+              <small>Message persistence mode</small>
+            </div>
+          </div>
+          <div class="two fields">
+            <div class="field">
+              <div class="ui toggle checkbox">
+                <input type="checkbox" name="rabbitmq_durable" checked>
+                <label>Durable</label>
+              </div>
+              <small>Make exchange and queue durable</small>
+            </div>
+            <div class="field">
+              <div class="ui toggle checkbox">
+                <input type="checkbox" name="rabbitmq_auto_delete">
+                <label>Auto Delete</label>
+              </div>
+              <small>Auto-delete when unused</small>
+            </div>
+          </div>
+          <div class="two fields">
+            <div class="field">
+              <div class="ui toggle checkbox">
+                <input type="checkbox" name="rabbitmq_exclusive">
+                <label>Exclusive</label>
+              </div>
+              <small>Exclusive queue (only this connection)</small>
+            </div>
+            <div class="field">
+              <div class="ui toggle checkbox">
+                <input type="checkbox" name="rabbitmq_no_wait">
+                <label>No Wait</label>
+              </div>
+              <small>No-wait flag for faster operations</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- WhatsApp Device Configuration -->
+        <h4 class="ui dividing header">WhatsApp Device Configuration (Optional)</h4>
+        <div class="field">
+          <div class="ui toggle checkbox" id="addInstanceWhatsAppToggle">
+            <input type="checkbox" name="whatsapp_enabled">
+            <label>Enable Custom WhatsApp Configuration</label>
+          </div>
+          <small>Configure custom WhatsApp device information for this instance</small>
+        </div>
+        <div id="addInstanceWhatsAppFields" style="display: none;">
+          <div class="two fields">
+            <div class="field">
+              <label>WhatsApp Version</label>
+              <input type="text" name="wa_version" placeholder="2.3000.1026436087">
+              <small>WhatsApp version string</small>
+            </div>
+            <div class="field">
+              <label>Platform</label>
+              <select class="ui dropdown" name="wa_platform" id="addInstanceWAPlatform">
+                <option value="">Default</option>
+                <option value="WEB">WEB</option>
+                <option value="ANDROID">ANDROID</option>
+                <option value="IOS">IOS</option>
+                <option value="WINDOWS_PHONE">WINDOWS_PHONE</option>
+                <option value="BLACKBERRY">BLACKBERRY</option>
+                <option value="BLACKBERRYX">BLACKBERRYX</option>
+                <option value="S40">S40</option>
+                <option value="S60">S60</option>
+                <option value="PYTHON_CLIENT">PYTHON_CLIENT</option>
+                <option value="TIZEN">TIZEN</option>
+                <option value="ENTERPRISE">ENTERPRISE</option>
+                <option value="SMB_ANDROID">SMB_ANDROID</option>
+                <option value="KAIOS">KAIOS</option>
+                <option value="SMB_IOS">SMB_IOS</option>
+                <option value="WINDOWS">WINDOWS</option>
+                <option value="PORTAL">PORTAL</option>
+                <option value="GREEN_ANDROID">GREEN_ANDROID</option>
+                <option value="GREEN_IPHONE">GREEN_IPHONE</option>
+                <option value="BLUE_ANDROID">BLUE_ANDROID</option>
+                <option value="BLUE_IPHONE">BLUE_IPHONE</option>
+                <option value="FBLITE_ANDROID">FBLITE_ANDROID</option>
+                <option value="MLITE_ANDROID">MLITE_ANDROID</option>
+                <option value="IGLITE_ANDROID">IGLITE_ANDROID</option>
+                <option value="PAGE">PAGE</option>
+                <option value="MACOS">MACOS</option>
+                <option value="OCULUS_MSG">OCULUS_MSG</option>
+                <option value="OCULUS_CALL">OCULUS_CALL</option>
+                <option value="MILAN">MILAN</option>
+                <option value="CAPI">CAPI</option>
+                <option value="WEAROS">WEAROS</option>
+                <option value="ARDEVICE">ARDEVICE</option>
+                <option value="VRDEVICE">VRDEVICE</option>
+                <option value="BLUE_WEB">BLUE_WEB</option>
+                <option value="IPAD">IPAD</option>
+                <option value="TEST">TEST</option>
+                <option value="SMART_GLASSES">SMART_GLASSES</option>
+                <option value="BLUE_VR">BLUE_VR</option>
+              </select>
+              <small>WhatsApp platform type</small>
+            </div>
+          </div>
+          <div class="two fields">
+            <div class="field">
+              <label>Release Channel</label>
+              <select class="ui dropdown" name="wa_release_channel" id="addInstanceWAReleaseChannel">
+                <option value="">Default</option>
+                <option value="RELEASE">RELEASE</option>
+                <option value="BETA">BETA</option>
+                <option value="ALPHA">ALPHA</option>
+                <option value="DEBUG">DEBUG</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Web Sub-Platform</label>
+              <select class="ui dropdown" name="wa_web_sub_platform" id="addInstanceWAWebSubPlatform">
+                <option value="">Default</option>
+                <option value="WEB_BROWSER">WEB_BROWSER</option>
+                <option value="APP_STORE">APP_STORE</option>
+                <option value="WIN_STORE">WIN_STORE</option>
+                <option value="DARWIN">DARWIN</option>
+                <option value="WIN32">WIN32</option>
+                <option value="WIN_HYBRID">WIN_HYBRID</option>
+              </select>
+            </div>
+          </div>
+          <div class="two fields">
+            <div class="field">
+              <label>OS Name</label>
+              <input type="text" name="wa_os_name" placeholder="Mac OS 10">
+              <small>Operating system name</small>
+            </div>
+            <div class="field">
+              <label>OS Version</label>
+              <input type="text" name="wa_os_version" placeholder="10.15.7">
+              <small>Operating system version</small>
+            </div>
+          </div>
+          <div class="two fields">
+            <div class="field">
+              <label>Device Name</label>
+              <input type="text" name="wa_device_name" placeholder="Desktop">
+            </div>
+            <div class="field">
+              <label>Manufacturer</label>
+              <input type="text" name="wa_manufacturer" placeholder="Apple">
+            </div>
+          </div>
+          <div class="field">
+            <label>Device Board</label>
+            <input type="text" name="wa_device_board" placeholder="Device board identifier">
+          </div>
+          <div class="two fields">
+            <div class="field">
+              <label>Locale Language</label>
+              <input type="text" name="wa_locale_language" placeholder="en" maxlength="2">
+              <small>Two-letter language code</small>
+            </div>
+            <div class="field">
+              <label>Locale Country</label>
+              <input type="text" name="wa_locale_country" placeholder="US" maxlength="2">
+              <small>Two-letter country code</small>
+            </div>
+          </div>
+          <div class="two fields">
+            <div class="field">
+              <label>Mobile Country Code (MCC)</label>
+              <input type="text" name="wa_mcc" placeholder="000" maxlength="3">
+            </div>
+            <div class="field">
+              <label>Mobile Network Code (MNC)</label>
+              <input type="text" name="wa_mnc" placeholder="000" maxlength="3">
+            </div>
+          </div>
+          <div class="two fields">
+            <div class="field">
+              <label>Connect Type</label>
+              <select class="ui dropdown" name="wa_connect_type" id="addInstanceWAConnectType">
+                <option value="">Default</option>
+                <option value="CELLULAR_UNKNOWN">CELLULAR_UNKNOWN</option>
+                <option value="WIFI_UNKNOWN">WIFI_UNKNOWN</option>
+                <option value="CELLULAR_EDGE">CELLULAR_EDGE</option>
+                <option value="CELLULAR_IDEN">CELLULAR_IDEN</option>
+                <option value="CELLULAR_UMTS">CELLULAR_UMTS</option>
+                <option value="CELLULAR_EVDO">CELLULAR_EVDO</option>
+                <option value="CELLULAR_GPRS">CELLULAR_GPRS</option>
+                <option value="CELLULAR_HSDPA">CELLULAR_HSDPA</option>
+                <option value="CELLULAR_HSUPA">CELLULAR_HSUPA</option>
+                <option value="CELLULAR_HSPA">CELLULAR_HSPA</option>
+                <option value="CELLULAR_CDMA">CELLULAR_CDMA</option>
+                <option value="CELLULAR_1XRTT">CELLULAR_1XRTT</option>
+                <option value="CELLULAR_EHRPD">CELLULAR_EHRPD</option>
+                <option value="CELLULAR_LTE">CELLULAR_LTE</option>
+                <option value="CELLULAR_HSPAP">CELLULAR_HSPAP</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Platform Type</label>
+              <select class="ui dropdown" name="wa_platform_type" id="addInstanceWAPlatformType">
+                <option value="">Default</option>
+                <option value="UNKNOWN">UNKNOWN</option>
+                <option value="CHROME">CHROME</option>
+                <option value="FIREFOX">FIREFOX</option>
+                <option value="IE">IE</option>
+                <option value="OPERA">OPERA</option>
+                <option value="SAFARI">SAFARI</option>
+                <option value="EDGE">EDGE</option>
+                <option value="DESKTOP">DESKTOP</option>
+                <option value="IPAD">IPAD</option>
+                <option value="ANDROID_TABLET">ANDROID_TABLET</option>
+                <option value="OHANA">OHANA</option>
+                <option value="ALOHA">ALOHA</option>
+                <option value="CATALINA">CATALINA</option>
+                <option value="TCL_TV">TCL_TV</option>
+                <option value="IOS_PHONE">IOS_PHONE</option>
+                <option value="IOS_CATALYST">IOS_CATALYST</option>
+                <option value="ANDROID_PHONE">ANDROID_PHONE</option>
+                <option value="ANDROID_AMBIGUOUS">ANDROID_AMBIGUOUS</option>
+                <option value="WEAR_OS">WEAR_OS</option>
+                <option value="AR_WRIST">AR_WRIST</option>
+                <option value="AR_DEVICE">AR_DEVICE</option>
+                <option value="UWP">UWP</option>
+                <option value="VR">VR</option>
+                <option value="CLOUD_API">CLOUD_API</option>
+                <option value="SMARTGLASSES">SMARTGLASSES</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Performance Configuration -->
+        <h4 class="ui dividing header">Performance Configuration (Optional)</h4>
+        <div class="two fields">
+          <div class="field">
+            <div class="ui toggle checkbox" id="addInstanceSkipMediaToggle">
+              <input type="checkbox" name="skip_media">
+              <label>Skip Media Download</label>
+            </div>
+            <small>Skip downloading media files during WhatsApp events. Improves performance for high-volume scenarios.</small>
+          </div>
+          <div class="field">
+            <div class="ui toggle checkbox" id="addInstanceSkipGroupsToggle">
+              <input type="checkbox" name="skip_groups">
+              <label>Skip Groups Processing</label>
+            </div>
+            <small>Skip processing messages from WhatsApp groups. Only direct messages will be processed.</small>
+          </div>
+        </div>
+
+        <div class="two fields">
+          <div class="field">
+            <div class="ui toggle checkbox" id="addInstanceSkipNewslettersToggle">
+              <input type="checkbox" name="skip_newsletters">
+              <label>Skip Newsletters Processing</label>
+            </div>
+            <small>Skip processing messages from WhatsApp newsletters and channels. Only direct messages and groups will be processed.</small>
+          </div>
+          <div class="field">
+            <div class="ui toggle checkbox" id="addInstanceSkipBroadcastsToggle">
+              <input type="checkbox" name="skip_broadcasts">
+              <label>Skip Broadcasts Processing</label>
+            </div>
+            <small>Skip processing messages from WhatsApp broadcasts and status updates. Only direct messages and groups will be processed.</small>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="ui toggle checkbox" id="addInstanceSkipOwnMessagesToggle">
+            <input type="checkbox" name="skip_own_messages">
+            <label>Skip Own Messages Processing</label>
+          </div>
+          <small>Skip processing your own sent messages. Only messages received from others will be processed.</small>
+        </div>
+
+        <div class="field">
+          <div class="ui toggle checkbox" id="addInstanceEchoApiToggle">
+            <input type="checkbox" name="echo_api_messages">
+            <label>Echo API Messages</label>
+          </div>
+          <small>Emit a synthetic Message event after successful API sends (requires global ECHO_API_MESSAGES_ENABLED=true). Event payload includes the <code>Info.IsFromAPI</code> marker.</small>
+        </div>
+
+        <!-- Call Rejection Configuration -->
+        <div class="two fields">
+          <div class="field">
+            <div class="ui toggle checkbox" id="addInstanceSkipCallsToggle">
+              <input type="checkbox" name="skip_calls">
+              <label>Enable Call Rejection</label>
+            </div>
+            <small>Automatically reject incoming calls with custom message.</small>
+          </div>
+          <div class="field" id="addInstanceCallRejectFields" style="display: none;">
+            <label>Rejection Type</label>
+            <select class="ui dropdown" name="call_reject_type" id="addInstanceCallRejectType">
+              <option value="busy">Busy</option>
+              <option value="declined">Declined</option>
+              <option value="unavailable">Unavailable</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" id="addInstanceCallMessageField" style="display: none;">
+          <label>Rejection Message</label>
+          <input type="text" name="call_reject_message" placeholder="Sorry, I cannot take calls at the moment." value="Sorry, I cannot take calls at the moment.">
+          <small>Message sent to callers after rejecting their call.</small>
         </div>
 
         <div class="ui error message"></div>
@@ -825,15 +1854,220 @@
     </div>
   </div>
 
+  <div class="ui modal" id="modalBusinessProfile"><i class="close icon"></i>
+    <div class="header"> Business Profile </div>
+    <div class="content">
+      <div class="ui message info hidden" id="businessProfileResult"></div>
+      <div class="ui form">
+        <div class="field"><label>Phone</label><input id="phonebusinessfield" type="text" placeholder="Type phone number"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button secondary">Close</div>
+      <div class="ui positive right labeled icon button">Get Profile<i class="checkmark icon"></i></div>
+    </div>
+  </div>
+
+  <!-- Check User Modal -->
+  <div class="ui modal" id="modalCheckUser"><i class="close icon"></i>
+    <div class="header"> Check User </div>
+    <div class="content">
+      <div class="ui info message">
+        <div class="header">Check WhatsApp Users</div>
+        <p>Check if phone numbers are registered on WhatsApp. You can check multiple numbers at once by adding them on separate lines.</p>
+      </div>
+      <div class="ui message info hidden" id="checkUserResult"></div>
+      <div class="ui form">
+        <div class="field">
+          <label>Phone Numbers</label>
+          <textarea id="checkUserInput" placeholder="Enter phone numbers (one per line)&#10;Example:&#10;5521971532700&#10;5521979232690" rows="5"></textarea>
+          <small>Enter one phone number per line. You can check multiple numbers at once.</small>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button secondary">Close</div>
+      <div class="ui positive right labeled icon button">Check Users<i class="checkmark icon"></i></div>
+    </div>
+  </div>
+
+  <!-- Privacy Settings Modal -->
+  <div class="ui modal" id="modalPrivacySettings"><i class="close icon"></i>
+    <div class="header"> Privacy Settings </div>
+    <div class="content">
+      <div class="ui info message">
+        <div class="header">Your Privacy Settings</div>
+        <p>View your current WhatsApp privacy settings. These settings control who can see your information and interact with you.</p>
+      </div>
+      <div class="ui message info hidden" id="privacySettingsResult"></div>
+      <div class="ui form">
+        <div class="ui primary button" id="loadPrivacySettingsBtn">
+          <i class="privacy icon"></i> Load Privacy Settings
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button secondary">Close</div>
+    </div>
+  </div>
+
+  <!-- Change Push Name Modal -->
+  <div class="ui modal" id="modalChangePushName"><i class="close icon"></i>
+    <div class="header"> Change Push Name </div>
+    <div class="content">
+      <div class="ui info message">
+        <div class="header">Update Display Name</div>
+        <p>Change your display name (push name) that appears to other WhatsApp users. This is the name shown in chats and contact lists.</p>
+      </div>
+      <div class="ui message info hidden" id="changePushNameResult"></div>
+      <div class="ui form">
+        <div class="field">
+          <label>New Push Name</label>
+          <input id="newPushNameInput" type="text" placeholder="Enter your new display name" maxlength="25">
+          <small>Maximum 25 characters. This will be visible to all your contacts.</small>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button secondary">Close</div>
+      <div class="ui positive right labeled icon button">Update Name<i class="checkmark icon"></i></div>
+    </div>
+  </div>
+
+  <!-- My Status Modal -->
+  <div class="ui modal" id="modalMyStatus"><i class="close icon"></i>
+    <div class="header"> My Status </div>
+    <div class="content">
+      <div class="ui info message">
+        <div class="header">Status Message</div>
+        <p>View and update your WhatsApp status message. This message appears below your name in chats and contact lists.</p>
+      </div>
+      <div class="ui message info hidden" id="myStatusResult"></div>
+      <div class="ui form">
+        <div class="field">
+          <label>Current Status</label>
+          <div class="ui action input">
+            <input id="currentStatusDisplay" type="text" readonly placeholder="Loading current status...">
+            <button type="button" class="ui blue button" id="loadCurrentStatusBtn">
+              <i class="refresh icon"></i> Load
+            </button>
+          </div>
+        </div>
+        <div class="field">
+          <label>New Status Message</label>
+          <textarea id="newStatusInput" placeholder="Enter your new status message" rows="3" maxlength="139"></textarea>
+          <div class="ui description">
+            <span id="statusCharCount">0</span>/139 characters
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button secondary">Close</div>
+      <div class="ui positive right labeled icon button">Update Status<i class="checkmark icon"></i></div>
+    </div>
+  </div>
+
+  <!-- Send Presence Modal -->
+  <div class="ui modal" id="modalSendPresence"><i class="close icon"></i>
+    <div class="header"> Send Presence </div>
+    <div class="content">
+      <div class="ui info message">
+        <div class="header">Global Presence Status</div>
+        <p>Set your global presence status on WhatsApp. This controls whether you appear as available or unavailable to other users.</p>
+      </div>
+      <div class="ui message info hidden" id="sendPresenceResult"></div>
+      <div class="ui form">
+        <div class="field">
+          <label>Presence Type</label>
+          <select class="ui dropdown" id="presenceTypeSelect">
+            <option value="">Select presence type</option>
+            <option value="available">Available</option>
+            <option value="unavailable">Unavailable</option>
+          </select>
+          <small>Available: You appear online to contacts. Unavailable: You appear offline to contacts.</small>
+        </div>
+        <div class="ui warning message">
+          <div class="header">Important Note</div>
+          <p>Changing your presence status affects how you appear to all your WhatsApp contacts. This setting is global and applies to all conversations.</p>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button secondary">Close</div>
+      <div class="ui positive right labeled icon button">Set Presence<i class="checkmark icon"></i></div>
+    </div>
+  </div>
+
+  <div class="ui modal" id="modalUpdateProfile"><i class="close icon"></i>
+    <div class="header">Update Profile</div>
+    <div class="content">
+      <div class="ui warning message">
+        <div class="header">⚠️ Security Warning</div>
+        <p>Changing your authentication token will immediately invalidate your current token. You will need to update your token in all applications and integrations that use the API.</p>
+        <p>Keep your new token secure and never share it publicly.</p>
+      </div>
+      <div class="ui success message hidden" id="updateProfileSuccess">
+        <div class="header">✅ Success</div>
+        <p id="updateProfileSuccessMessage"></p>
+      </div>
+      <div class="ui error message hidden" id="updateProfileError">
+        <div class="header">❌ Error</div>
+        <p id="updateProfileErrorMessage"></p>
+      </div>
+      <div class="ui form">
+        <div class="field">
+          <label>Name</label>
+          <input id="updateProfileName" type="text" placeholder="Enter your new name (optional)">
+          <small class="ui grey text">Leave empty to keep current name</small>
+        </div>
+        <div class="field">
+          <label>Token</label>
+          <input id="updateProfileToken" type="text" placeholder="Enter your new token (optional)">
+          <small class="ui grey text">Leave empty to keep current token. Minimum 8 characters.</small>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui cancel button secondary">Cancel</div>
+      <div class="ui positive right labeled icon button" id="btnUpdateProfile">
+        Update Profile<i class="save icon"></i>
+      </div>
+    </div>
+  </div>
+
   <!-- Message Modals -->
 
   <div class="ui modal" id="modalSendTextMessage"><i class="close icon"></i>
     <div class="header"> Send Text Message </div>
     <div class="content">
+      <div class="ui info message">
+        <div class="header">💡 New Features Available!</div>
+        <ul>
+          <li><strong>Link Preview:</strong> Automatically generate previews for URLs in your message</li>
+          <li><strong>Custom Duration:</strong> Set expiration time for messages</li>
+          <li><strong>Compatibility:</strong> Supports both snake_case (phone) and PascalCase (Phone) formats</li>
+        </ul>
+      </div>
       <div class="ui message info hidden" id="sendMessageContainer"></div>
       <div class="ui form">
         <div class="field"><label>Phone</label><input id="messagesendphone" type="text" placeholder="Type phone number"></div>
-        <div class="field"><label>Message</label><textarea id="messagesendtext"></textarea></div>
+        <div class="field"><label>Message</label><textarea id="messagesendtext" placeholder="Type your message. Include URLs for automatic link preview!"></textarea></div>
+        <div class="ui stackable grid">
+          <div class="eight wide column">
+            <div class="field">
+              <div class="ui toggle checkbox">
+                <input type="checkbox" id="linkPreviewToggle">
+                <label>Enable Link Preview</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Message Duration (seconds)</label>
+          <input id="messageDuration" type="number" min="1" placeholder="86400 (24 hours)" value="86400">
+          <small>Time in seconds before message expires</small>
+        </div>
       </div>
     </div>
     <div class="actions">
@@ -889,7 +2123,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Participants List -->
       <div class="ui divider"></div>
       <h4 class="ui header">
@@ -914,7 +2148,7 @@
         </button>
           </div>
         </div>
-        
+
         <!-- Admin Actions -->
         <div class="eight wide column" id="adminActionsSection" style="display: none;">
           <h5 class="ui header">Admin Actions</h5>
@@ -927,7 +2161,7 @@
             </button>
           </div>
         </div>
-        
+
         <!-- Danger Zone -->
         <div class="sixteen wide column">
           <div class="ui divider"></div>
@@ -1095,7 +2329,7 @@
             When enabled, only group admins can send messages to this group.
           </div>
         </div>
-        
+
         <h4 class="ui dividing header">Group Information</h4>
         <div class="field">
           <div class="ui toggle checkbox" id="editInfoToggle">
@@ -1106,7 +2340,7 @@
             When enabled, only group admins can edit group name, description, and photo.
           </div>
         </div>
-        
+
         <h4 class="ui dividing header">Disappearing Messages</h4>
         <div class="field">
           <label>Message Timer</label>
@@ -1199,7 +2433,7 @@
             </button>
           </div>
         </div>
-        
+
         <!-- Current Participants Section -->
         <div class="eight wide column">
           <h4 class="ui header">
@@ -1281,13 +2515,402 @@
           Share this link to invite people to join the group.
         </div>
       </div>
-      
+
       <div class="ui warning message">
         <div class="header">Reset Invite Link</div>
         <p>Resetting the invite link will invalidate the current link and create a new one. Anyone with the old link will no longer be able to join.</p>
         <button class="ui orange button" id="resetInviteLinkBtn">
           <i class="refresh icon"></i> Reset Link
         </button>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="ui button">Close</div>
+    </div>
+  </div>
+
+  <!-- Text Status Modal -->
+  <div class="ui modal" id="modalSendTextStatus">
+    <i class="close icon"></i>
+    <div class="header">
+      <i class="mobile alternate icon"></i>
+      Send Text Status
+    </div>
+    <div class="content">
+      <form class="ui form" id="textStatusForm">
+        <div class="field">
+          <label>Status Message</label>
+          <textarea name="message" id="textStatusMessage" placeholder="Enter your status message" rows="4" maxlength="700" required></textarea>
+          <div class="ui description">
+            <span id="charCount">0</span>/700 characters
+          </div>
+        </div>
+
+        <div class="ui stackable grid">
+          <div class="eight wide column">
+            <div class="field">
+              <label>Background Color</label>
+              <div class="ui action input">
+                <input type="color" id="backgroundColor" value="#25D366">
+                <input type="text" id="backgroundColorText" placeholder="#25D366" maxlength="7">
+                <button type="button" class="ui icon button" id="resetBgColor">
+                  <i class="refresh icon"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="eight wide column">
+            <div class="field">
+              <label>Text Color</label>
+              <div class="ui action input">
+                <input type="color" id="textColor" value="#FFFFFF">
+                <input type="text" id="textColorText" placeholder="#FFFFFF" maxlength="7">
+                <button type="button" class="ui icon button" id="resetTextColor">
+                  <i class="refresh icon"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Font Style</label>
+          <select class="ui dropdown" id="fontSelect">
+            <option value="">Default Font</option>
+            <option value="BRYNDAN_WRITE">Bryndan Write (Elegant handwritten)</option>
+            <option value="BEBASNEUE_REGULAR">Bebas Neue (Modern and clean)</option>
+            <option value="OSWALD_HEAVY">Oswald Heavy (Strong and impactful)</option>
+            <option value="DAMION_REGULAR">Damion (Stylized cursive)</option>
+            <option value="MORNINGBREEZE_REGULAR">Morning Breeze (Soft and elegant)</option>
+            <option value="CALISTOGA_REGULAR">Calistoga (Unique decorative)</option>
+            <option value="EXO_BOLD">Exo Bold (Futuristic and bold)</option>
+            <option value="COURIER_PRIME_BOLD">Courier Prime (Classic monospace)</option>
+          </select>
+        </div>
+
+        <div class="ui segment">
+          <h4 class="ui header">Preview</h4>
+          <div class="ui fluid card" id="statusPreview">
+            <div class="content" id="statusPreviewContent" style="background-color: #25D366; color: #FFFFFF; text-align: center; padding: 20px; min-height: 100px; display: flex; align-items: center; justify-content: center;">
+              <div id="statusPreviewText">Your message will appear here...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ui error message"></div>
+      </form>
+    </div>
+    <div class="actions">
+      <div class="ui black deny button">Cancel</div>
+      <div class="ui positive right labeled icon button" id="sendTextStatusBtn">
+        Send Status
+        <i class="mobile alternate icon"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Status Modal -->
+  <div class="ui modal" id="modalSendImageStatus">
+    <i class="close icon"></i>
+    <div class="header">
+      <i class="image icon"></i>
+      Send Image Status
+    </div>
+    <div class="content">
+      <form class="ui form" id="imageStatusForm">
+        <div class="field">
+          <label>Select Image</label>
+          <div class="ui segment">
+            <div class="ui stackable grid">
+              <div class="eight wide column">
+                <div class="ui fluid buttons">
+                  <button type="button" class="ui button" id="selectImageFileBtn">
+                    <i class="upload icon"></i>
+                    Upload Image
+                  </button>
+                  <div class="or"></div>
+                  <button type="button" class="ui button" id="useImageUrlBtn">
+                    <i class="linkify icon"></i>
+                    Use URL
+                  </button>
+                </div>
+                <input type="file" id="imageStatusFile" accept="image/*" style="display: none;">
+              </div>
+              <div class="eight wide column">
+                <div class="field" id="imageUrlField" style="display: none;">
+                  <input type="url" id="imageStatusUrl" placeholder="https://example.com/image.jpg">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Caption (Optional)</label>
+          <textarea name="caption" id="imageStatusCaption" placeholder="Add a caption to your image..." rows="3" maxlength="200"></textarea>
+          <div class="ui description">
+            <span id="imageCaptionCount">0</span>/200 characters
+          </div>
+        </div>
+
+        <div class="ui segment" id="imagePreviewContainer" style="display: none;">
+          <h4 class="ui header">Preview</h4>
+          <div class="ui centered card">
+            <div class="image">
+              <img id="imageStatusPreview" style="max-height: 300px; object-fit: contain;">
+            </div>
+            <div class="content" id="imageCaptionPreview" style="display: none;">
+              <div class="description" id="imageCaptionText"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ui error message"></div>
+      </form>
+    </div>
+    <div class="actions">
+      <div class="ui black deny button">Cancel</div>
+      <div class="ui positive right labeled icon button" id="sendImageStatusBtn">
+        Send Status
+        <i class="image icon"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video Status Modal -->
+  <div class="ui modal" id="modalSendVideoStatus">
+    <i class="close icon"></i>
+    <div class="header">
+      <i class="video icon"></i>
+      Send Video Status
+    </div>
+    <div class="content">
+      <form class="ui form" id="videoStatusForm">
+        <div class="field">
+          <label>Select Video</label>
+          <div class="ui segment">
+            <div class="ui stackable grid">
+              <div class="eight wide column">
+                <div class="ui fluid buttons">
+                  <button type="button" class="ui button" id="selectVideoFileBtn">
+                    <i class="upload icon"></i>
+                    Upload Video
+                  </button>
+                  <div class="or"></div>
+                  <button type="button" class="ui button" id="useVideoUrlBtn">
+                    <i class="linkify icon"></i>
+                    Use URL
+                  </button>
+                </div>
+                <input type="file" id="videoStatusFile" accept="video/*" style="display: none;">
+              </div>
+              <div class="eight wide column">
+                <div class="field" id="videoUrlField" style="display: none;">
+                  <input type="url" id="videoStatusUrl" placeholder="https://example.com/video.mp4">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ui info message">
+            <div class="header">Video Requirements</div>
+            <ul>
+              <li>Maximum file size: 64MB</li>
+              <li>Maximum duration: 30 seconds</li>
+              <li>Supported formats: MP4, AVI, MOV, 3GP</li>
+              <li>Recommended resolution: 1080x1920 (9:16)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Caption (Optional)</label>
+          <textarea name="caption" id="videoStatusCaption" placeholder="Add a caption to your video..." rows="3" maxlength="200"></textarea>
+          <div class="ui description">
+            <span id="videoCaptionCount">0</span>/200 characters
+          </div>
+        </div>
+
+        <div class="ui segment" id="videoPreviewContainer" style="display: none;">
+          <h4 class="ui header">Preview</h4>
+          <div class="ui centered card">
+            <div class="content">
+              <video id="videoStatusPreview" controls style="width: 100%; max-height: 300px;">
+                <source id="videoStatusSource" type="video/mp4">
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            <div class="content" id="videoCaptionPreview" style="display: none;">
+              <div class="description" id="videoCaptionText"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ui error message"></div>
+      </form>
+    </div>
+    <div class="actions">
+      <div class="ui black deny button">Cancel</div>
+      <div class="ui positive right labeled icon button" id="sendVideoStatusBtn">
+        Send Status
+        <i class="video icon"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Newsletter Modal -->
+  <div class="ui modal" id="modalCreateNewsletter">
+    <i class="close icon"></i>
+    <div class="header">
+      <i class="newspaper icon"></i>
+      Create Newsletter
+    </div>
+    <div class="content">
+      <form class="ui form" id="createNewsletterForm">
+        <div class="field">
+          <label>Newsletter Name <span class="ui red text">*</span></label>
+          <input type="text" name="name" id="newsletterName" placeholder="Enter newsletter name" maxlength="25" required>
+          <div class="ui description">
+            <span id="nameCount">0</span>/25 characters
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Description</label>
+          <textarea name="description" id="newsletterDescription" placeholder="Enter newsletter description" rows="3" maxlength="512"></textarea>
+          <div class="ui description">
+            <span id="descriptionCount">0</span>/512 characters
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Newsletter Picture</label>
+          <div class="ui segment">
+            <div class="ui stackable grid">
+              <div class="eight wide column">
+                <div class="ui fluid buttons">
+                  <button type="button" class="ui button" id="selectNewsletterPictureBtn">
+                    <i class="upload icon"></i>
+                    Upload Picture
+                  </button>
+                  <div class="or"></div>
+                  <button type="button" class="ui button" id="useNewsletterPictureUrlBtn">
+                    <i class="linkify icon"></i>
+                    Use URL
+                  </button>
+                </div>
+                <input type="file" id="newsletterPictureFile" accept="image/*" style="display: none;">
+              </div>
+              <div class="eight wide column">
+                <div class="field" id="newsletterPictureUrlField" style="display: none;">
+                  <input type="url" id="newsletterPictureUrl" placeholder="https://example.com/picture.jpg">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ui segment" id="newsletterPicturePreviewContainer" style="display: none;">
+          <h4 class="ui header">Picture Preview</h4>
+          <div class="ui centered card">
+            <div class="image">
+              <img id="newsletterPicturePreview" style="max-height: 200px; object-fit: contain;">
+            </div>
+          </div>
+        </div>
+
+        <div class="ui error message"></div>
+      </form>
+    </div>
+    <div class="actions">
+      <div class="ui black deny button">Cancel</div>
+      <div class="ui positive right labeled icon button" id="createNewsletterBtn">
+        Create Newsletter
+        <i class="newspaper icon"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Newsletter Info Modal -->
+  <div class="ui modal" id="modalNewsletterInfo">
+    <i class="close icon"></i>
+    <div class="header">
+      <i class="info circle icon"></i>
+      Newsletter Information
+    </div>
+    <div class="content">
+      <form class="ui form" id="newsletterInfoForm">
+        <div class="field">
+          <label>Newsletter ID <span class="ui red text">*</span></label>
+          <input type="text" name="newsletter_id" id="newsletterInfoId" placeholder="Enter newsletter ID or JID" required>
+        </div>
+
+        <div class="ui info message">
+          <div class="header">Newsletter ID Format</div>
+          <p>You can use either the newsletter JID (e.g., 1234567890@newsletter) or just the ID number (1234567890).</p>
+        </div>
+
+        <div class="ui segment" id="newsletterInfoResult" style="display: none;">
+          <h4 class="ui header">Newsletter Details</h4>
+          <div class="ui relaxed divided list" id="newsletterDetailsList">
+            <!-- Newsletter details will be populated here -->
+          </div>
+        </div>
+
+        <div class="ui error message"></div>
+      </form>
+    </div>
+    <div class="actions">
+      <div class="ui black deny button">Close</div>
+      <div class="ui positive right labeled icon button" id="getNewsletterInfoBtn">
+        Get Information
+        <i class="search icon"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- List Newsletters Modal -->
+  <div class="ui modal" id="modalListNewsletters">
+    <i class="close icon"></i>
+    <div class="header">
+      <i class="list icon"></i>
+      Subscribed Newsletters
+    </div>
+    <div class="content">
+      <div class="ui segment">
+        <div class="ui stackable grid">
+          <div class="twelve wide column">
+            <div class="ui icon input fluid">
+              <input type="text" id="newslettersSearch" placeholder="Search newsletters by name...">
+              <i class="search icon"></i>
+            </div>
+          </div>
+          <div class="four wide column">
+            <button class="ui primary button fluid" id="refreshNewsletters">
+              <i class="refresh icon"></i> Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Newsletters Loading -->
+      <div class="ui active inverted dimmer" id="newslettersLoading">
+        <div class="ui text loader">Loading newsletters...</div>
+      </div>
+
+      <!-- Newsletters List Container -->
+      <div class="ui relaxed divided list" id="newslettersListContainer">
+        <!-- Newsletters will be populated here -->
+      </div>
+
+      <!-- No Newsletters Message -->
+      <div class="ui placeholder segment hidden" id="noNewslettersMessage">
+        <div class="ui icon header">
+          <i class="newspaper icon"></i>
+          No newsletters found
+        </div>
+        <div class="inline">
+          <div class="ui primary button" id="createFirstNewsletter">Create your first newsletter</div>
+        </div>
       </div>
     </div>
     <div class="actions">

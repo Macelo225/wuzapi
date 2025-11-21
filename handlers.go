@@ -123,6 +123,9 @@ func (s *server) GetHealth() http.HandlerFunc {
 func (s *server) authadmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("Authorization")
+		if token == "" {
+			token = r.Header.Get("token") // Fallback for dinastiapi dashboard compatibility
+		}
 		if token != *adminToken {
 			s.Respond(w, r, http.StatusUnauthorized, errors.New("unauthorized"))
 			return
@@ -774,21 +777,34 @@ func (s *server) GetStatus() http.HandlerFunc {
 		}
 		hmacConfigured := len(hmacKey) > 0
 
+		// Get skip settings
+		var skipMedia, skipGroups, skipNewsletters, skipBroadcasts, skipOwnMessages, skipCalls bool
+		err = s.db.QueryRow(`SELECT COALESCE(skip_media, false), COALESCE(skip_groups, false), COALESCE(skip_newsletters, false), COALESCE(skip_broadcasts, false), COALESCE(skip_own_messages, false), COALESCE(skip_calls, false) FROM users WHERE id = $1`, txtid).Scan(&skipMedia, &skipGroups, &skipNewsletters, &skipBroadcasts, &skipOwnMessages, &skipCalls)
+		if err != nil && err != sql.ErrNoRows {
+			log.Warn().Err(err).Str("user_id", txtid).Msg("Failed to query skip settings for user")
+		}
+
 		response := map[string]interface{}{
-			"id":              txtid,
-			"name":            userInfo.Get("Name"),
-			"connected":       isConnected,
-			"loggedIn":        isLoggedIn,
-			"token":           userInfo.Get("Token"),
-			"jid":             userInfo.Get("Jid"),
-			"webhook":         userInfo.Get("Webhook"),
-			"events":          userInfo.Get("Events"),
-			"proxy_url":       userInfo.Get("Proxy"),
-			"qrcode":          userInfo.Get("Qrcode"),
-			"history":         userInfo.Get("History"),
-			"proxy_config":    proxyConfig,
-			"s3_config":       s3Config,
-			"hmac_configured": hmacConfigured,
+			"id":                   txtid,
+			"name":                 userInfo.Get("Name"),
+			"connected":            isConnected,
+			"loggedIn":             isLoggedIn,
+			"token":                userInfo.Get("Token"),
+			"jid":                  userInfo.Get("Jid"),
+			"webhook":              userInfo.Get("Webhook"),
+			"events":               userInfo.Get("Events"),
+			"proxy_url":            userInfo.Get("Proxy"),
+			"qrcode":               userInfo.Get("Qrcode"),
+			"history":              userInfo.Get("History"),
+			"proxy_config":         proxyConfig,
+			"s3_config":            s3Config,
+			"hmac_configured":      hmacConfigured,
+			"skip_media_download":  skipMedia,
+			"skip_groups":          skipGroups,
+			"skip_newsletters":     skipNewsletters,
+			"skip_broadcasts":      skipBroadcasts,
+			"skip_own_messages":    skipOwnMessages,
+			"skip_calls":           skipCalls,
 		}
 		responseJson, err := json.Marshal(response)
 		if err != nil {
@@ -4631,6 +4647,27 @@ func (s *server) ListUsers() http.HandlerFunc {
 				}
 			}
 			userMap["s3_config"] = s3Config
+
+			// Add skip settings
+			var skipMedia, skipGroups, skipNewsletters, skipBroadcasts, skipOwnMessages, skipCalls bool
+			err = s.db.QueryRow(`SELECT COALESCE(skip_media, false), COALESCE(skip_groups, false), COALESCE(skip_newsletters, false), COALESCE(skip_broadcasts, false), COALESCE(skip_own_messages, false), COALESCE(skip_calls, false) FROM users WHERE id = $1`, user.Id).Scan(&skipMedia, &skipGroups, &skipNewsletters, &skipBroadcasts, &skipOwnMessages, &skipCalls)
+			if err == nil {
+				userMap["skip_media_download"] = skipMedia
+				userMap["skip_groups"] = skipGroups
+				userMap["skip_newsletters"] = skipNewsletters
+				userMap["skip_broadcasts"] = skipBroadcasts
+				userMap["skip_own_messages"] = skipOwnMessages
+				userMap["skip_calls"] = skipCalls
+			} else {
+				// Set defaults if query fails
+				userMap["skip_media_download"] = false
+				userMap["skip_groups"] = false
+				userMap["skip_newsletters"] = false
+				userMap["skip_broadcasts"] = false
+				userMap["skip_own_messages"] = false
+				userMap["skip_calls"] = false
+			}
+
 			users = append(users, userMap)
 		}
 		// Check for any error that occurred during iteration
@@ -6470,5 +6507,572 @@ func (s *server) DownloadSticker() http.HandlerFunc {
 			s.Respond(w, r, http.StatusOK, string(responseJson))
 		}
 		return
+	}
+}
+
+// ConfigureSessionSettings configures session skip and call handling settings
+func (s *server) ConfigureSessionSettings() http.HandlerFunc {
+	type sessionSettingsStruct struct {
+		// Skip settings
+		SkipMedia       *bool `json:"skip_media,omitempty"`
+		SkipGroups      *bool `json:"skip_groups,omitempty"`
+		SkipNewsletters *bool `json:"skip_newsletters,omitempty"`
+		SkipBroadcasts  *bool `json:"skip_broadcasts,omitempty"`
+		SkipOwnMessages *bool `json:"skip_own_messages,omitempty"`
+		SkipCalls       *bool `json:"skip_calls,omitempty"`
+		// Call handling
+		CallRejectEnabled *bool   `json:"call_reject_enabled,omitempty"`
+		CallRejectType    *string `json:"call_reject_type,omitempty"`    // busy, unavailable
+		CallRejectMessage *string `json:"call_reject_message,omitempty"` // Custom message
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+		token := r.Context().Value("userinfo").(Values).Get("Token")
+
+		decoder := json.NewDecoder(r.Body)
+		var t sessionSettingsStruct
+		err := decoder.Decode(&t)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode payload"))
+			return
+		}
+
+		// Build dynamic update query
+		updates := []string{}
+		args := []interface{}{}
+		argCount := 1
+
+		if t.SkipMedia != nil {
+			updates = append(updates, fmt.Sprintf("skip_media = $%d", argCount))
+			args = append(args, *t.SkipMedia)
+			argCount++
+		}
+		if t.SkipGroups != nil {
+			updates = append(updates, fmt.Sprintf("skip_groups = $%d", argCount))
+			args = append(args, *t.SkipGroups)
+			argCount++
+		}
+		if t.SkipNewsletters != nil {
+			updates = append(updates, fmt.Sprintf("skip_newsletters = $%d", argCount))
+			args = append(args, *t.SkipNewsletters)
+			argCount++
+		}
+		if t.SkipBroadcasts != nil {
+			updates = append(updates, fmt.Sprintf("skip_broadcasts = $%d", argCount))
+			args = append(args, *t.SkipBroadcasts)
+			argCount++
+		}
+		if t.SkipOwnMessages != nil {
+			updates = append(updates, fmt.Sprintf("skip_own_messages = $%d", argCount))
+			args = append(args, *t.SkipOwnMessages)
+			argCount++
+		}
+		if t.SkipCalls != nil {
+			updates = append(updates, fmt.Sprintf("skip_calls = $%d", argCount))
+			args = append(args, *t.SkipCalls)
+			argCount++
+		}
+		if t.CallRejectEnabled != nil {
+			updates = append(updates, fmt.Sprintf("call_reject_enabled = $%d", argCount))
+			args = append(args, *t.CallRejectEnabled)
+			argCount++
+		}
+		if t.CallRejectType != nil {
+			// Validate call reject type
+			validTypes := []string{"busy", "unavailable"}
+			isValid := false
+			for _, vt := range validTypes {
+				if *t.CallRejectType == vt {
+					isValid = true
+					break
+				}
+			}
+			if !isValid {
+				s.Respond(w, r, http.StatusBadRequest, errors.New("invalid call_reject_type, must be 'busy' or 'unavailable'"))
+				return
+			}
+			updates = append(updates, fmt.Sprintf("call_reject_type = $%d", argCount))
+			args = append(args, *t.CallRejectType)
+			argCount++
+		}
+		if t.CallRejectMessage != nil {
+			updates = append(updates, fmt.Sprintf("call_reject_message = $%d", argCount))
+			args = append(args, *t.CallRejectMessage)
+			argCount++
+		}
+
+		if len(updates) == 0 {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("no settings provided to update"))
+			return
+		}
+
+		// Add user ID as final argument
+		args = append(args, txtid)
+		query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d", strings.Join(updates, ", "), argCount)
+
+		_, err = s.db.Exec(query, args...)
+		if err != nil {
+			log.Error().Err(err).Str("userID", txtid).Msg("Failed to update session settings")
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to save session settings"))
+			return
+		}
+
+		// Update cache with new settings
+		if cachedUserInfo, found := userinfocache.Get(token); found {
+			updatedUserInfo := cachedUserInfo.(Values)
+			if t.SkipMedia != nil {
+				updatedUserInfo = updateUserInfo(updatedUserInfo, "SkipMedia", strconv.FormatBool(*t.SkipMedia)).(Values)
+			}
+			if t.SkipGroups != nil {
+				updatedUserInfo = updateUserInfo(updatedUserInfo, "SkipGroups", strconv.FormatBool(*t.SkipGroups)).(Values)
+			}
+			if t.SkipNewsletters != nil {
+				updatedUserInfo = updateUserInfo(updatedUserInfo, "SkipNewsletters", strconv.FormatBool(*t.SkipNewsletters)).(Values)
+			}
+			if t.SkipBroadcasts != nil {
+				updatedUserInfo = updateUserInfo(updatedUserInfo, "SkipBroadcasts", strconv.FormatBool(*t.SkipBroadcasts)).(Values)
+			}
+			if t.SkipOwnMessages != nil {
+				updatedUserInfo = updateUserInfo(updatedUserInfo, "SkipOwnMessages", strconv.FormatBool(*t.SkipOwnMessages)).(Values)
+			}
+			if t.SkipCalls != nil {
+				updatedUserInfo = updateUserInfo(updatedUserInfo, "SkipCalls", strconv.FormatBool(*t.SkipCalls)).(Values)
+			}
+			if t.CallRejectEnabled != nil {
+				updatedUserInfo = updateUserInfo(updatedUserInfo, "CallRejectEnabled", strconv.FormatBool(*t.CallRejectEnabled)).(Values)
+			}
+			if t.CallRejectType != nil {
+				updatedUserInfo = updateUserInfo(updatedUserInfo, "CallRejectType", *t.CallRejectType).(Values)
+			}
+			if t.CallRejectMessage != nil {
+				updatedUserInfo = updateUserInfo(updatedUserInfo, "CallRejectMessage", *t.CallRejectMessage).(Values)
+			}
+			userinfocache.Set(token, updatedUserInfo, cache.NoExpiration)
+			log.Info().Str("userID", txtid).Msg("User info cache updated with session settings")
+		}
+
+		response := map[string]interface{}{
+			"Details": "Session settings saved successfully",
+		}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// GetSessionSettings retrieves session skip and call handling settings
+func (s *server) GetSessionSettings() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		var config struct {
+			SkipMedia         bool   `json:"skip_media" db:"skip_media"`
+			SkipGroups        bool   `json:"skip_groups" db:"skip_groups"`
+			SkipNewsletters   bool   `json:"skip_newsletters" db:"skip_newsletters"`
+			SkipBroadcasts    bool   `json:"skip_broadcasts" db:"skip_broadcasts"`
+			SkipOwnMessages   bool   `json:"skip_own_messages" db:"skip_own_messages"`
+			SkipCalls         bool   `json:"skip_calls" db:"skip_calls"`
+			CallRejectEnabled bool   `json:"call_reject_enabled" db:"call_reject_enabled"`
+			CallRejectType    string `json:"call_reject_type" db:"call_reject_type"`
+			CallRejectMessage string `json:"call_reject_message" db:"call_reject_message"`
+		}
+
+		err := s.db.Get(&config, `
+			SELECT
+				COALESCE(skip_media, false) as skip_media,
+				COALESCE(skip_groups, false) as skip_groups,
+				COALESCE(skip_newsletters, false) as skip_newsletters,
+				COALESCE(skip_broadcasts, false) as skip_broadcasts,
+				COALESCE(skip_own_messages, false) as skip_own_messages,
+				COALESCE(skip_calls, false) as skip_calls,
+				COALESCE(call_reject_enabled, false) as call_reject_enabled,
+				COALESCE(call_reject_type, 'busy') as call_reject_type,
+				COALESCE(call_reject_message, '') as call_reject_message
+			FROM users WHERE id = $1`, txtid)
+
+		if err != nil {
+			log.Error().Err(err).Str("userID", txtid).Msg("Failed to get session settings from database")
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to get session settings"))
+			return
+		}
+
+		responseJson, err := json.Marshal(config)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// DeleteSessionSettings resets session settings to defaults
+func (s *server) DeleteSessionSettings() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		_, err := s.db.Exec(`
+			UPDATE users SET
+				skip_media = false,
+				skip_groups = false,
+				skip_newsletters = false,
+				skip_broadcasts = false,
+				skip_own_messages = false,
+				skip_calls = false,
+				call_reject_enabled = false,
+				call_reject_type = 'busy',
+				call_reject_message = ''
+			WHERE id = $1`, txtid)
+
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to reset session settings"))
+			return
+		}
+
+		response := map[string]interface{}{"Details": "Session settings reset to defaults"}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// Compatibility handlers for dinastiapi dashboard endpoints
+
+// GetSkipMediaConfig returns skip media setting in dinastiapi format
+func (s *server) GetSkipMediaConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		var skipMedia bool
+		err := s.db.Get(&skipMedia, "SELECT COALESCE(skip_media, false) FROM users WHERE id = $1", txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to get skip media config"))
+			return
+		}
+
+		response := map[string]interface{}{
+			"UserSkipMediaDownload":   skipMedia,
+			"GlobalSkipMediaDownload": false,
+		}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// SetSkipMediaConfig sets skip media setting
+func (s *server) SetSkipMediaConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+		token := r.Context().Value("userinfo").(Values).Get("Token")
+
+		var req struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("invalid request"))
+			return
+		}
+
+		_, err := s.db.Exec("UPDATE users SET skip_media = $1 WHERE id = $2", req.Enabled, txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to save config"))
+			return
+		}
+
+		// Update cache
+		if cachedUserInfo, found := userinfocache.Get(token); found {
+			updatedUserInfo := updateUserInfo(cachedUserInfo.(Values), "SkipMedia", strconv.FormatBool(req.Enabled)).(Values)
+			userinfocache.Set(token, updatedUserInfo, cache.NoExpiration)
+		}
+
+		response := map[string]interface{}{"Details": "Skip media config saved"}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// GetSkipGroupsConfig returns skip groups setting
+func (s *server) GetSkipGroupsConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		var skipGroups bool
+		err := s.db.Get(&skipGroups, "SELECT COALESCE(skip_groups, false) FROM users WHERE id = $1", txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to get skip groups config"))
+			return
+		}
+
+		response := map[string]interface{}{"SkipGroups": skipGroups}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// SetSkipGroupsConfig sets skip groups setting
+func (s *server) SetSkipGroupsConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+		token := r.Context().Value("userinfo").(Values).Get("Token")
+
+		var req struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("invalid request"))
+			return
+		}
+
+		_, err := s.db.Exec("UPDATE users SET skip_groups = $1 WHERE id = $2", req.Enabled, txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to save config"))
+			return
+		}
+
+		if cachedUserInfo, found := userinfocache.Get(token); found {
+			updatedUserInfo := updateUserInfo(cachedUserInfo.(Values), "SkipGroups", strconv.FormatBool(req.Enabled)).(Values)
+			userinfocache.Set(token, updatedUserInfo, cache.NoExpiration)
+		}
+
+		response := map[string]interface{}{"Details": "Skip groups config saved"}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// GetSkipNewslettersConfig returns skip newsletters setting
+func (s *server) GetSkipNewslettersConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		var skipNewsletters bool
+		err := s.db.Get(&skipNewsletters, "SELECT COALESCE(skip_newsletters, false) FROM users WHERE id = $1", txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to get skip newsletters config"))
+			return
+		}
+
+		response := map[string]interface{}{"SkipNewsletters": skipNewsletters}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// SetSkipNewslettersConfig sets skip newsletters setting
+func (s *server) SetSkipNewslettersConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+		token := r.Context().Value("userinfo").(Values).Get("Token")
+
+		var req struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("invalid request"))
+			return
+		}
+
+		_, err := s.db.Exec("UPDATE users SET skip_newsletters = $1 WHERE id = $2", req.Enabled, txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to save config"))
+			return
+		}
+
+		if cachedUserInfo, found := userinfocache.Get(token); found {
+			updatedUserInfo := updateUserInfo(cachedUserInfo.(Values), "SkipNewsletters", strconv.FormatBool(req.Enabled)).(Values)
+			userinfocache.Set(token, updatedUserInfo, cache.NoExpiration)
+		}
+
+		response := map[string]interface{}{"Details": "Skip newsletters config saved"}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// GetSkipBroadcastsConfig returns skip broadcasts setting
+func (s *server) GetSkipBroadcastsConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		var skipBroadcasts bool
+		err := s.db.Get(&skipBroadcasts, "SELECT COALESCE(skip_broadcasts, false) FROM users WHERE id = $1", txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to get skip broadcasts config"))
+			return
+		}
+
+		response := map[string]interface{}{"SkipBroadcasts": skipBroadcasts}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// SetSkipBroadcastsConfig sets skip broadcasts setting
+func (s *server) SetSkipBroadcastsConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+		token := r.Context().Value("userinfo").(Values).Get("Token")
+
+		var req struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("invalid request"))
+			return
+		}
+
+		_, err := s.db.Exec("UPDATE users SET skip_broadcasts = $1 WHERE id = $2", req.Enabled, txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to save config"))
+			return
+		}
+
+		if cachedUserInfo, found := userinfocache.Get(token); found {
+			updatedUserInfo := updateUserInfo(cachedUserInfo.(Values), "SkipBroadcasts", strconv.FormatBool(req.Enabled)).(Values)
+			userinfocache.Set(token, updatedUserInfo, cache.NoExpiration)
+		}
+
+		response := map[string]interface{}{"Details": "Skip broadcasts config saved"}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// GetSkipOwnMessagesConfig returns skip own messages setting
+func (s *server) GetSkipOwnMessagesConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		var skipOwnMessages bool
+		err := s.db.Get(&skipOwnMessages, "SELECT COALESCE(skip_own_messages, false) FROM users WHERE id = $1", txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to get skip own messages config"))
+			return
+		}
+
+		response := map[string]interface{}{"SkipOwnMessages": skipOwnMessages}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// SetSkipOwnMessagesConfig sets skip own messages setting
+func (s *server) SetSkipOwnMessagesConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+		token := r.Context().Value("userinfo").(Values).Get("Token")
+
+		var req struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("invalid request"))
+			return
+		}
+
+		_, err := s.db.Exec("UPDATE users SET skip_own_messages = $1 WHERE id = $2", req.Enabled, txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to save config"))
+			return
+		}
+
+		if cachedUserInfo, found := userinfocache.Get(token); found {
+			updatedUserInfo := updateUserInfo(cachedUserInfo.(Values), "SkipOwnMessages", strconv.FormatBool(req.Enabled)).(Values)
+			userinfocache.Set(token, updatedUserInfo, cache.NoExpiration)
+		}
+
+		response := map[string]interface{}{"Details": "Skip own messages config saved"}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// GetSkipCallsConfig returns skip calls setting
+func (s *server) GetSkipCallsConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		var config struct {
+			SkipCalls         bool   `db:"skip_calls"`
+			CallRejectEnabled bool   `db:"call_reject_enabled"`
+			CallRejectType    string `db:"call_reject_type"`
+			CallRejectMessage string `db:"call_reject_message"`
+		}
+		err := s.db.Get(&config, `
+			SELECT
+				COALESCE(skip_calls, false) as skip_calls,
+				COALESCE(call_reject_enabled, false) as call_reject_enabled,
+				COALESCE(call_reject_type, 'busy') as call_reject_type,
+				COALESCE(call_reject_message, '') as call_reject_message
+			FROM users WHERE id = $1`, txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to get skip calls config"))
+			return
+		}
+
+		response := map[string]interface{}{
+			"SkipCalls":         config.SkipCalls,
+			"CallRejectEnabled": config.CallRejectEnabled,
+			"CallRejectType":    config.CallRejectType,
+			"CallRejectMessage": config.CallRejectMessage,
+		}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// SetSkipCallsConfig sets skip calls and call reject settings
+func (s *server) SetSkipCallsConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+		token := r.Context().Value("userinfo").(Values).Get("Token")
+
+		var req struct {
+			Enabled           bool   `json:"enabled"`
+			CallRejectEnabled bool   `json:"call_reject_enabled"`
+			CallRejectType    string `json:"call_reject_type"`
+			CallRejectMessage string `json:"call_reject_message"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("invalid request"))
+			return
+		}
+
+		// Validate call reject type
+		if req.CallRejectType != "" && req.CallRejectType != "busy" && req.CallRejectType != "unavailable" {
+			req.CallRejectType = "busy"
+		}
+
+		_, err := s.db.Exec(`
+			UPDATE users SET
+				skip_calls = $1,
+				call_reject_enabled = $2,
+				call_reject_type = $3,
+				call_reject_message = $4
+			WHERE id = $5`,
+			req.Enabled, req.CallRejectEnabled, req.CallRejectType, req.CallRejectMessage, txtid)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("failed to save config"))
+			return
+		}
+
+		if cachedUserInfo, found := userinfocache.Get(token); found {
+			updatedUserInfo := cachedUserInfo.(Values)
+			updatedUserInfo = updateUserInfo(updatedUserInfo, "SkipCalls", strconv.FormatBool(req.Enabled)).(Values)
+			updatedUserInfo = updateUserInfo(updatedUserInfo, "CallRejectEnabled", strconv.FormatBool(req.CallRejectEnabled)).(Values)
+			updatedUserInfo = updateUserInfo(updatedUserInfo, "CallRejectType", req.CallRejectType).(Values)
+			updatedUserInfo = updateUserInfo(updatedUserInfo, "CallRejectMessage", req.CallRejectMessage).(Values)
+			userinfocache.Set(token, updatedUserInfo, cache.NoExpiration)
+		}
+
+		response := map[string]interface{}{"Details": "Skip calls config saved"}
+		responseJson, _ := json.Marshal(response)
+		s.Respond(w, r, http.StatusOK, string(responseJson))
 	}
 }

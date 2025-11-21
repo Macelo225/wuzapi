@@ -70,6 +70,11 @@ var migrations = []Migration{
 		Name:  "add_data_json",
 		UpSQL: addDataJsonSQL,
 	},
+	{
+		ID:    9,
+		Name:  "add_session_settings",
+		UpSQL: addSessionSettingsSQL,
+	},
 }
 
 const changeIDToStringSQL = `
@@ -435,6 +440,38 @@ func applyMigration(db *sqlx.DB, migration Migration) error {
 		} else {
 			_, err = tx.Exec(migration.UpSQL)
 		}
+	} else if migration.ID == 9 {
+		if db.DriverName() == "sqlite" {
+			// Session skip settings
+			err = addColumnIfNotExistsSQLite(tx, "users", "skip_media", "BOOLEAN DEFAULT 0")
+			if err == nil {
+				err = addColumnIfNotExistsSQLite(tx, "users", "skip_groups", "BOOLEAN DEFAULT 0")
+			}
+			if err == nil {
+				err = addColumnIfNotExistsSQLite(tx, "users", "skip_newsletters", "BOOLEAN DEFAULT 0")
+			}
+			if err == nil {
+				err = addColumnIfNotExistsSQLite(tx, "users", "skip_broadcasts", "BOOLEAN DEFAULT 0")
+			}
+			if err == nil {
+				err = addColumnIfNotExistsSQLite(tx, "users", "skip_own_messages", "BOOLEAN DEFAULT 0")
+			}
+			if err == nil {
+				err = addColumnIfNotExistsSQLite(tx, "users", "skip_calls", "BOOLEAN DEFAULT 0")
+			}
+			// Call handling settings
+			if err == nil {
+				err = addColumnIfNotExistsSQLite(tx, "users", "call_reject_enabled", "BOOLEAN DEFAULT 0")
+			}
+			if err == nil {
+				err = addColumnIfNotExistsSQLite(tx, "users", "call_reject_type", "TEXT DEFAULT 'busy'")
+			}
+			if err == nil {
+				err = addColumnIfNotExistsSQLite(tx, "users", "call_reject_message", "TEXT DEFAULT ''")
+			}
+		} else {
+			_, err = tx.Exec(migration.UpSQL)
+		}
 	} else {
 		_, err = tx.Exec(migration.UpSQL)
 	}
@@ -641,6 +678,52 @@ BEGIN
     -- Add hmac_key column as BYTEA for encrypted data
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'hmac_key') THEN
         ALTER TABLE users ADD COLUMN hmac_key BYTEA;
+    END IF;
+END $$;
+
+-- SQLite version (handled in code)
+`
+
+const addSessionSettingsSQL = `
+-- PostgreSQL version - Add session skip and call handling settings
+DO $$
+BEGIN
+    -- Session skip settings
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'skip_media') THEN
+        ALTER TABLE users ADD COLUMN skip_media BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'skip_groups') THEN
+        ALTER TABLE users ADD COLUMN skip_groups BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'skip_newsletters') THEN
+        ALTER TABLE users ADD COLUMN skip_newsletters BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'skip_broadcasts') THEN
+        ALTER TABLE users ADD COLUMN skip_broadcasts BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'skip_own_messages') THEN
+        ALTER TABLE users ADD COLUMN skip_own_messages BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'skip_calls') THEN
+        ALTER TABLE users ADD COLUMN skip_calls BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    -- Call handling settings
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'call_reject_enabled') THEN
+        ALTER TABLE users ADD COLUMN call_reject_enabled BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'call_reject_type') THEN
+        ALTER TABLE users ADD COLUMN call_reject_type TEXT DEFAULT 'busy';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'call_reject_message') THEN
+        ALTER TABLE users ADD COLUMN call_reject_message TEXT DEFAULT '';
     END IF;
 END $$;
 
