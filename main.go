@@ -210,7 +210,7 @@ func main() {
 	}
 
 	if *versionFlag {
-		fmt.Printf("WuzAPI version %s\n", version)
+		fmt.Printf("NS-5API version %s\n", version)
 		os.Exit(0)
 	}
 

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NS-5API Favicon Generator</title>
+</head>
+<body style="background: #1a2332; padding: 20px; font-family: Arial;">
+    <h1 style="color: #d4a84b;">NS-5API Favicon Generator</h1>
+    <p style="color: white;">Clique nos botões para baixar os favicons:</p>
+
+    <canvas id="canvas512" width="512" height="512" style="border: 1px solid #d4a84b;"></canvas>
+    <br><br>
+
+    <button onclick="download(512, 'favicon.png')" style="padding: 10px 20px; margin: 5px;">Download 512x512 (favicon.png)</button>
+    <button onclick="download(32, 'favicon-32x32.png')" style="padding: 10px 20px; margin: 5px;">Download 32x32</button>
+    <button onclick="download(16, 'favicon-16x16.png')" style="padding: 10px 20px; margin: 5px;">Download 16x16</button>
+
+    <script>
+        function drawLogo(ctx, size) {
+            const scale = size / 512;
+
+            // Background
+            ctx.fillStyle = '#1a2332';
+            ctx.fillRect(0, 0, size, size);
+
+            // Create gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#f5d47a');
+            gradient.addColorStop(0.5, '#d4a84b');
+            gradient.addColorStop(1, '#b8963d');
+
+            // Main circle
+            ctx.beginPath();
+            ctx.arc(256 * scale, 256 * scale, 200 * scale, 0, Math.PI * 2);
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 12 * scale;
+            ctx.stroke();
+
+            // Circuit lines
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 8 * scale;
+            ctx.lineCap = 'round';
+
+            // Main diagonal lines
+            ctx.beginPath();
+            ctx.moveTo(160 * scale, 160 * scale);
+            ctx.lineTo(352 * scale, 352 * scale);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(200 * scale, 120 * scale);
+            ctx.lineTo(392 * scale, 312 * scale);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(120 * scale, 200 * scale);
+            ctx.lineTo(312 * scale, 392 * scale);
+            ctx.stroke();
+
+            // Connection nodes
+            ctx.fillStyle = gradient;
+            const nodes = [
+                [160, 160], [200, 120], [120, 200],
+                [256, 256], [296, 216], [216, 296],
+                [352, 352], [392, 312], [312, 392]
+            ];
+
+            nodes.forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.arc(x * scale, y * scale, 12 * scale, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        // Draw initial logo
+        const canvas = document.getElementById('canvas512');
+        const ctx = canvas.getContext('2d');
+        drawLogo(ctx, 512);
+
+        function download(size, filename) {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = size;
+            tempCanvas.height = size;
+            const tempCtx = tempCanvas.getContext('2d');
+            drawLogo(tempCtx, size);
+
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html>
