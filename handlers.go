@@ -2679,6 +2679,10 @@ func (s *server) SendMessage() http.HandlerFunc {
 		IsForwarded   bool     `json:"is_forwarded,omitempty"`
 	}
 
+	type mentionInfoStruct struct {
+		MentionAll bool `json:"MentionAll,omitempty"`
+	}
+
 	type textStruct struct {
 		// dinastiAPI format (lowercase)
 		Phone       string            `json:"phone"`
@@ -2690,6 +2694,8 @@ func (s *server) SendMessage() http.HandlerFunc {
 		QuotedMsgId string            `json:"quoted_msg_id,omitempty"`
 		QuotedText  string            `json:"quoted_text,omitempty"`
 		Mentions    []string          `json:"mentions,omitempty"`
+		MentionAll  bool              `json:"mention_all,omitempty"`
+		MentionInfo mentionInfoStruct `json:"MentionInfo,omitempty"`
 		Forwarded   bool              `json:"forwarded,omitempty"`
 		ContextInfo contextInfoStruct `json:"context_info,omitempty"`
 	}
@@ -2802,6 +2808,19 @@ func (s *server) SendMessage() http.HandlerFunc {
 		mentions := t.Mentions
 		if len(mentions) == 0 {
 			mentions = t.ContextInfo.MentionedJID
+		}
+
+		// Handle MentionAll - get all group participants
+		shouldMentionAll := t.MentionAll || t.MentionInfo.MentionAll
+		if shouldMentionAll && strings.HasSuffix(recipient.String(), "@g.us") {
+			groupInfo, err := clientManager.GetWhatsmeowClient(txtid).GetGroupInfo(context.Background(), recipient)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to get group info for MentionAll")
+			} else {
+				for _, participant := range groupInfo.Participants {
+					mentions = append(mentions, participant.JID.String())
+				}
+			}
 		}
 		if len(mentions) > 0 {
 			if msg.ExtendedTextMessage.ContextInfo == nil {
