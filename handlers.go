@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -816,17 +817,69 @@ func (s *server) GetStatus() http.HandlerFunc {
 	}
 }
 
+// SessionRefresh refreshes the WhatsApp connection
+func (s *server) SessionRefresh() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userInfo := r.Context().Value("userinfo").(Values)
+		txtid := userInfo.Get("Id")
+
+		client := clientManager.GetWhatsmeowClient(txtid)
+
+		var refreshSuccess bool
+		var details string
+
+		if client == nil {
+			refreshSuccess = false
+			details = "No client found"
+		} else if !client.IsLoggedIn() {
+			refreshSuccess = false
+			details = "Not logged in"
+		} else if !client.IsConnected() {
+			// Try to reconnect
+			err := client.Connect()
+			if err != nil {
+				refreshSuccess = false
+				details = "Failed to reconnect: " + err.Error()
+			} else {
+				refreshSuccess = true
+				details = "Reconnected successfully"
+			}
+		} else {
+			// Already connected, just confirm
+			refreshSuccess = true
+			details = "Connection is active"
+		}
+
+		response := map[string]interface{}{
+			"refreshSuccess": refreshSuccess,
+			"Details":        details,
+			"connected":      client != nil && client.IsConnected(),
+			"loggedIn":       client != nil && client.IsLoggedIn(),
+		}
+
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
 // Sends a document/attachment message
 func (s *server) SendDocument() http.HandlerFunc {
 
 	type documentStruct struct {
-		Caption     string
-		Phone       string
-		Document    string
-		FileName    string
-		Id          string
-		MimeType    string
-		ContextInfo waE2E.ContextInfo
+		Phone       string   `json:"phone"`
+		Document    string   `json:"document"`
+		FileName    string   `json:"filename"`
+		Caption     string   `json:"caption,omitempty"`
+		Id          string   `json:"id,omitempty"`
+		MimeType    string   `json:"mimetype,omitempty"`
+		Mentions    []string `json:"mentions,omitempty"`
+		QuotedMsgId string   `json:"quoted_msg_id,omitempty"`
+		Participant string   `json:"participant,omitempty"`
+		Forwarded   bool     `json:"forwarded,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -860,11 +913,20 @@ func (s *server) SendDocument() http.HandlerFunc {
 		}
 
 		if t.FileName == "" {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing FileName in Payload"))
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing filename in Payload"))
 			return
 		}
 
-		recipient, err := validateMessageFields(t.Phone, t.ContextInfo.StanzaID, t.ContextInfo.Participant)
+		// Handle quoted message
+		var stanzaIDPtr, participantPtr *string
+		if t.QuotedMsgId != "" {
+			stanzaIDPtr = &t.QuotedMsgId
+		}
+		if t.Participant != "" {
+			participantPtr = &t.Participant
+		}
+
+		recipient, err := validateMessageFields(t.Phone, stanzaIDPtr, participantPtr)
 		if err != nil {
 			log.Error().Msg(fmt.Sprintf("%s", err))
 			s.Respond(w, r, http.StatusBadRequest, err)
@@ -915,21 +977,25 @@ func (s *server) SendDocument() http.HandlerFunc {
 			Caption:       proto.String(t.Caption),
 		}}
 
-		if t.ContextInfo.StanzaID != nil {
+		// Handle quoted message
+		if t.QuotedMsgId != "" {
 			msg.DocumentMessage.ContextInfo = &waE2E.ContextInfo{
-				StanzaID:      proto.String(*t.ContextInfo.StanzaID),
-				Participant:   proto.String(*t.ContextInfo.Participant),
+				StanzaID:      proto.String(t.QuotedMsgId),
+				Participant:   proto.String(t.Participant),
 				QuotedMessage: &waE2E.Message{Conversation: proto.String("")},
 			}
 		}
-		if t.ContextInfo.MentionedJID != nil {
+
+		// Handle mentions
+		if len(t.Mentions) > 0 {
 			if msg.DocumentMessage.ContextInfo == nil {
 				msg.DocumentMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
-			msg.DocumentMessage.ContextInfo.MentionedJID = t.ContextInfo.MentionedJID
+			msg.DocumentMessage.ContextInfo.MentionedJID = t.Mentions
 		}
 
-		if t.ContextInfo.IsForwarded != nil && *t.ContextInfo.IsForwarded {
+		// Handle forwarded
+		if t.Forwarded {
 			if msg.DocumentMessage.ContextInfo == nil {
 				msg.DocumentMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
@@ -962,15 +1028,18 @@ func (s *server) SendDocument() http.HandlerFunc {
 func (s *server) SendAudio() http.HandlerFunc {
 
 	type audioStruct struct {
-		Phone       string
-		Audio       string
-		Caption     string
-		Id          string
-		PTT         *bool  `json:"ptt,omitempty"`
-		MimeType    string `json:"mimetype,omitempty"`
-		Seconds     uint32
-		Waveform    []byte
-		ContextInfo waE2E.ContextInfo
+		Phone       string   `json:"phone"`
+		Audio       string   `json:"audio"`
+		Caption     string   `json:"caption,omitempty"`
+		Id          string   `json:"id,omitempty"`
+		PTT         *bool    `json:"ptt,omitempty"`
+		MimeType    string   `json:"mimetype,omitempty"`
+		Seconds     uint32   `json:"seconds,omitempty"`
+		Waveform    []byte   `json:"waveform,omitempty"`
+		Mentions    []string `json:"mentions,omitempty"`
+		QuotedMsgId string   `json:"quoted_msg_id,omitempty"`
+		Participant string   `json:"participant,omitempty"`
+		Forwarded   bool     `json:"forwarded,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -998,11 +1067,20 @@ func (s *server) SendAudio() http.HandlerFunc {
 		}
 
 		if t.Audio == "" {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Audio in Payload"))
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing audio in Payload"))
 			return
 		}
 
-		recipient, err := validateMessageFields(t.Phone, t.ContextInfo.StanzaID, t.ContextInfo.Participant)
+		// Handle quoted message
+		var stanzaIDPtr, participantPtr *string
+		if t.QuotedMsgId != "" {
+			stanzaIDPtr = &t.QuotedMsgId
+		}
+		if t.Participant != "" {
+			participantPtr = &t.Participant
+		}
+
+		recipient, err := validateMessageFields(t.Phone, stanzaIDPtr, participantPtr)
 		if err != nil {
 			log.Error().Msg(fmt.Sprintf("%s", err))
 			s.Respond(w, r, http.StatusBadRequest, err)
@@ -1068,21 +1146,25 @@ func (s *server) SendAudio() http.HandlerFunc {
 			Waveform:      t.Waveform,
 		}}
 
-		if t.ContextInfo.StanzaID != nil {
+		// Handle quoted message
+		if t.QuotedMsgId != "" {
 			msg.AudioMessage.ContextInfo = &waE2E.ContextInfo{
-				StanzaID:      proto.String(*t.ContextInfo.StanzaID),
-				Participant:   proto.String(*t.ContextInfo.Participant),
+				StanzaID:      proto.String(t.QuotedMsgId),
+				Participant:   proto.String(t.Participant),
 				QuotedMessage: &waE2E.Message{Conversation: proto.String("")},
 			}
 		}
-		if t.ContextInfo.MentionedJID != nil {
+
+		// Handle mentions
+		if len(t.Mentions) > 0 {
 			if msg.AudioMessage.ContextInfo == nil {
 				msg.AudioMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
-			msg.AudioMessage.ContextInfo.MentionedJID = t.ContextInfo.MentionedJID
+			msg.AudioMessage.ContextInfo.MentionedJID = t.Mentions
 		}
 
-		if t.ContextInfo.IsForwarded != nil && *t.ContextInfo.IsForwarded {
+		// Handle forwarded
+		if t.Forwarded {
 			if msg.AudioMessage.ContextInfo == nil {
 				msg.AudioMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
@@ -1115,12 +1197,17 @@ func (s *server) SendAudio() http.HandlerFunc {
 func (s *server) SendImage() http.HandlerFunc {
 
 	type imageStruct struct {
-		Phone       string
-		Image       string
-		Caption     string
-		Id          string
-		MimeType    string
-		ContextInfo waE2E.ContextInfo
+		// dinastiAPI format (lowercase)
+		Phone       string   `json:"phone"`
+		Image       string   `json:"image"`
+		Caption     string   `json:"caption,omitempty"`
+		Id          string   `json:"id,omitempty"`
+		MimeType    string   `json:"mimetype,omitempty"`
+		ViewOnce    bool     `json:"view_once,omitempty"`
+		Mentions    []string `json:"mentions,omitempty"`
+		QuotedMsgId string   `json:"quoted_msg_id,omitempty"`
+		Participant string   `json:"participant,omitempty"`
+		Forwarded   bool     `json:"forwarded,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1148,11 +1235,20 @@ func (s *server) SendImage() http.HandlerFunc {
 		}
 
 		if t.Image == "" {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Image in Payload"))
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing image in Payload"))
 			return
 		}
 
-		recipient, err := validateMessageFields(t.Phone, t.ContextInfo.StanzaID, t.ContextInfo.Participant)
+		// Handle quoted message
+		var stanzaIDPtr, participantPtr *string
+		if t.QuotedMsgId != "" {
+			stanzaIDPtr = &t.QuotedMsgId
+		}
+		if t.Participant != "" {
+			participantPtr = &t.Participant
+		}
+
+		recipient, err := validateMessageFields(t.Phone, stanzaIDPtr, participantPtr)
 		if err != nil {
 			log.Error().Msg(fmt.Sprintf("%s", err))
 			s.Respond(w, r, http.StatusBadRequest, err)
@@ -1252,28 +1348,34 @@ func (s *server) SendImage() http.HandlerFunc {
 			JPEGThumbnail: thumbnailBytes,
 		}}
 
-		if t.ContextInfo.StanzaID != nil {
-			if msg.ImageMessage.ContextInfo == nil {
-				msg.ImageMessage.ContextInfo = &waE2E.ContextInfo{
-					StanzaID:      proto.String(*t.ContextInfo.StanzaID),
-					Participant:   proto.String(*t.ContextInfo.Participant),
-					QuotedMessage: &waE2E.Message{Conversation: proto.String("")},
-				}
+		// Handle quoted message
+		if t.QuotedMsgId != "" {
+			msg.ImageMessage.ContextInfo = &waE2E.ContextInfo{
+				StanzaID:      proto.String(t.QuotedMsgId),
+				Participant:   proto.String(t.Participant),
+				QuotedMessage: &waE2E.Message{Conversation: proto.String("")},
 			}
 		}
 
-		if t.ContextInfo.MentionedJID != nil {
+		// Handle mentions
+		if len(t.Mentions) > 0 {
 			if msg.ImageMessage.ContextInfo == nil {
 				msg.ImageMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
-			msg.ImageMessage.ContextInfo.MentionedJID = t.ContextInfo.MentionedJID
+			msg.ImageMessage.ContextInfo.MentionedJID = t.Mentions
 		}
 
-		if t.ContextInfo.IsForwarded != nil && *t.ContextInfo.IsForwarded {
+		// Handle forwarded
+		if t.Forwarded {
 			if msg.ImageMessage.ContextInfo == nil {
 				msg.ImageMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
 			msg.ImageMessage.ContextInfo.IsForwarded = proto.Bool(true)
+		}
+
+		// Handle view once
+		if t.ViewOnce {
+			msg.ImageMessage.ViewOnce = proto.Bool(true)
 		}
 
 		resp, err = clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), recipient, msg, whatsmeow.SendRequestExtra{ID: msgid})
@@ -1302,16 +1404,18 @@ func (s *server) SendImage() http.HandlerFunc {
 func (s *server) SendSticker() http.HandlerFunc {
 
 	type stickerStruct struct {
-		Phone         string
-		Sticker       string
-		Id            string
-		PngThumbnail  []byte
-		MimeType      string
-		PackId        string
-		PackName      string
-		PackPublisher string
-		Emojis        []string
-		ContextInfo   waE2E.ContextInfo
+		Phone         string   `json:"phone"`
+		Sticker       string   `json:"sticker"`
+		Id            string   `json:"id,omitempty"`
+		PngThumbnail  []byte   `json:"thumbnail,omitempty"`
+		MimeType      string   `json:"mimetype,omitempty"`
+		PackId        string   `json:"pack_id,omitempty"`
+		PackName      string   `json:"pack_name,omitempty"`
+		PackPublisher string   `json:"pack_publisher,omitempty"`
+		Emojis        []string `json:"emojis,omitempty"`
+		QuotedMsgId   string   `json:"quoted_msg_id,omitempty"`
+		Participant   string   `json:"participant,omitempty"`
+		Forwarded     bool     `json:"forwarded,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1339,11 +1443,20 @@ func (s *server) SendSticker() http.HandlerFunc {
 		}
 
 		if t.Sticker == "" {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Sticker in Payload"))
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing sticker in Payload"))
 			return
 		}
 
-		recipient, err := validateMessageFields(t.Phone, t.ContextInfo.StanzaID, t.ContextInfo.Participant)
+		// Handle quoted message
+		var stanzaIDPtr, participantPtr *string
+		if t.QuotedMsgId != "" {
+			stanzaIDPtr = &t.QuotedMsgId
+		}
+		if t.Participant != "" {
+			participantPtr = &t.Participant
+		}
+
+		recipient, err := validateMessageFields(t.Phone, stanzaIDPtr, participantPtr)
 		if err != nil {
 			log.Error().Msg(fmt.Sprintf("%s", err))
 			s.Respond(w, r, http.StatusBadRequest, err)
@@ -1391,21 +1504,17 @@ func (s *server) SendSticker() http.HandlerFunc {
 			PngThumbnail:  t.PngThumbnail,
 		}}
 
-		if t.ContextInfo.StanzaID != nil {
+		// Handle quoted message
+		if t.QuotedMsgId != "" {
 			msg.StickerMessage.ContextInfo = &waE2E.ContextInfo{
-				StanzaID:      proto.String(*t.ContextInfo.StanzaID),
-				Participant:   proto.String(*t.ContextInfo.Participant),
+				StanzaID:      proto.String(t.QuotedMsgId),
+				Participant:   proto.String(t.Participant),
 				QuotedMessage: &waE2E.Message{Conversation: proto.String("")},
 			}
 		}
-		if t.ContextInfo.MentionedJID != nil {
-			if msg.StickerMessage.ContextInfo == nil {
-				msg.StickerMessage.ContextInfo = &waE2E.ContextInfo{}
-			}
-			msg.StickerMessage.ContextInfo.MentionedJID = t.ContextInfo.MentionedJID
-		}
 
-		if t.ContextInfo.IsForwarded != nil && *t.ContextInfo.IsForwarded {
+		// Handle forwarded
+		if t.Forwarded {
 			if msg.StickerMessage.ContextInfo == nil {
 				msg.StickerMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
@@ -1437,14 +1546,18 @@ func (s *server) SendSticker() http.HandlerFunc {
 // Sends Video message
 func (s *server) SendVideo() http.HandlerFunc {
 
-	type imageStruct struct {
-		Phone         string
-		Video         string
-		Caption       string
-		Id            string
-		JPEGThumbnail []byte
-		MimeType      string
-		ContextInfo   waE2E.ContextInfo
+	type videoStruct struct {
+		Phone         string   `json:"phone"`
+		Video         string   `json:"video"`
+		Caption       string   `json:"caption,omitempty"`
+		Id            string   `json:"id,omitempty"`
+		JPEGThumbnail []byte   `json:"thumbnail,omitempty"`
+		MimeType      string   `json:"mimetype,omitempty"`
+		ViewOnce      bool     `json:"view_once,omitempty"`
+		Mentions      []string `json:"mentions,omitempty"`
+		QuotedMsgId   string   `json:"quoted_msg_id,omitempty"`
+		Participant   string   `json:"participant,omitempty"`
+		Forwarded     bool     `json:"forwarded,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1459,7 +1572,7 @@ func (s *server) SendVideo() http.HandlerFunc {
 		}
 
 		decoder := json.NewDecoder(r.Body)
-		var t imageStruct
+		var t videoStruct
 		err := decoder.Decode(&t)
 		if err != nil {
 			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode Payload"))
@@ -1467,16 +1580,25 @@ func (s *server) SendVideo() http.HandlerFunc {
 		}
 
 		if t.Phone == "" {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Phone in Payload"))
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing phone in Payload"))
 			return
 		}
 
 		if t.Video == "" {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Video in Payload"))
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing video in Payload"))
 			return
 		}
 
-		recipient, err := validateMessageFields(t.Phone, t.ContextInfo.StanzaID, t.ContextInfo.Participant)
+		// Handle quoted message
+		var stanzaIDPtr, participantPtr *string
+		if t.QuotedMsgId != "" {
+			stanzaIDPtr = &t.QuotedMsgId
+		}
+		if t.Participant != "" {
+			participantPtr = &t.Participant
+		}
+
+		recipient, err := validateMessageFields(t.Phone, stanzaIDPtr, participantPtr)
 		if err != nil {
 			log.Error().Msg(fmt.Sprintf("%s", err))
 			s.Respond(w, r, http.StatusBadRequest, err)
@@ -1547,25 +1669,34 @@ func (s *server) SendVideo() http.HandlerFunc {
 			JPEGThumbnail: t.JPEGThumbnail,
 		}}
 
-		if t.ContextInfo.StanzaID != nil {
+		// Handle quoted message
+		if t.QuotedMsgId != "" {
 			msg.VideoMessage.ContextInfo = &waE2E.ContextInfo{
-				StanzaID:      proto.String(*t.ContextInfo.StanzaID),
-				Participant:   proto.String(*t.ContextInfo.Participant),
+				StanzaID:      proto.String(t.QuotedMsgId),
+				Participant:   proto.String(t.Participant),
 				QuotedMessage: &waE2E.Message{Conversation: proto.String("")},
 			}
 		}
-		if t.ContextInfo.MentionedJID != nil {
+
+		// Handle mentions
+		if len(t.Mentions) > 0 {
 			if msg.VideoMessage.ContextInfo == nil {
 				msg.VideoMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
-			msg.VideoMessage.ContextInfo.MentionedJID = t.ContextInfo.MentionedJID
+			msg.VideoMessage.ContextInfo.MentionedJID = t.Mentions
 		}
 
-		if t.ContextInfo.IsForwarded != nil && *t.ContextInfo.IsForwarded {
+		// Handle forwarded
+		if t.Forwarded {
 			if msg.VideoMessage.ContextInfo == nil {
 				msg.VideoMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
 			msg.VideoMessage.ContextInfo.IsForwarded = proto.Bool(true)
+		}
+
+		// Handle view once
+		if t.ViewOnce {
+			msg.VideoMessage.ViewOnce = proto.Bool(true)
 		}
 
 		resp, err = clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), recipient, msg, whatsmeow.SendRequestExtra{ID: msgid})
@@ -1594,11 +1725,13 @@ func (s *server) SendVideo() http.HandlerFunc {
 func (s *server) SendContact() http.HandlerFunc {
 
 	type contactStruct struct {
-		Phone       string
-		Id          string
-		Name        string
-		Vcard       string
-		ContextInfo waE2E.ContextInfo
+		Phone       string `json:"phone"`
+		Id          string `json:"id,omitempty"`
+		Name        string `json:"name"`
+		Vcard       string `json:"vcard"`
+		QuotedMsgId string `json:"quoted_msg_id,omitempty"`
+		Participant string `json:"participant,omitempty"`
+		Forwarded   bool   `json:"forwarded,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1633,44 +1766,45 @@ func (s *server) SendContact() http.HandlerFunc {
 			return
 		}
 
-		recipient, err := validateMessageFields(t.Phone, t.ContextInfo.StanzaID, t.ContextInfo.Participant)
-		if err != nil {
-			log.Error().Msg(fmt.Sprintf("%s", err))
-			s.Respond(w, r, http.StatusBadRequest, err)
-			return
-		}
+	var stanzaIDPtr, participantPtr *string
+	if t.QuotedMsgId != "" {
+		stanzaIDPtr = &t.QuotedMsgId
+	}
+	if t.Participant != "" {
+		participantPtr = &t.Participant
+	}
+	recipient, err := validateMessageFields(t.Phone, stanzaIDPtr, participantPtr)
+	if err != nil {
+		log.Error().Msg(fmt.Sprintf("%s", err))
+		s.Respond(w, r, http.StatusBadRequest, err)
+		return
+	}
 
-		if t.Id == "" {
-			msgid = clientManager.GetWhatsmeowClient(txtid).GenerateMessageID()
-		} else {
-			msgid = t.Id
-		}
+	if t.Id == "" {
+		msgid = clientManager.GetWhatsmeowClient(txtid).GenerateMessageID()
+	} else {
+		msgid = t.Id
+	}
 
-		msg := &waE2E.Message{ContactMessage: &waE2E.ContactMessage{
-			DisplayName: &t.Name,
-			Vcard:       &t.Vcard,
-		}}
+	msg := &waE2E.Message{ContactMessage: &waE2E.ContactMessage{
+		DisplayName: &t.Name,
+		Vcard:       &t.Vcard,
+	}}
 
-		if t.ContextInfo.StanzaID != nil {
-			msg.ContactMessage.ContextInfo = &waE2E.ContextInfo{
-				StanzaID:      proto.String(*t.ContextInfo.StanzaID),
-				Participant:   proto.String(*t.ContextInfo.Participant),
-				QuotedMessage: &waE2E.Message{Conversation: proto.String("")},
-			}
+	if t.QuotedMsgId != "" {
+		msg.ContactMessage.ContextInfo = &waE2E.ContextInfo{
+			StanzaID:      proto.String(t.QuotedMsgId),
+			Participant:   proto.String(t.Participant),
+			QuotedMessage: &waE2E.Message{Conversation: proto.String("")},
 		}
-		if t.ContextInfo.MentionedJID != nil {
-			if msg.ContactMessage.ContextInfo == nil {
-				msg.ContactMessage.ContextInfo = &waE2E.ContextInfo{}
-			}
-			msg.ContactMessage.ContextInfo.MentionedJID = t.ContextInfo.MentionedJID
-		}
+	}
 
-		if t.ContextInfo.IsForwarded != nil && *t.ContextInfo.IsForwarded {
-			if msg.ContactMessage.ContextInfo == nil {
-				msg.ContactMessage.ContextInfo = &waE2E.ContextInfo{}
-			}
-			msg.ContactMessage.ContextInfo.IsForwarded = proto.Bool(true)
+	if t.Forwarded {
+		if msg.ContactMessage.ContextInfo == nil {
+			msg.ContactMessage.ContextInfo = &waE2E.ContextInfo{}
 		}
+		msg.ContactMessage.ContextInfo.IsForwarded = proto.Bool(true)
+	}
 
 		resp, err = clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), recipient, msg, whatsmeow.SendRequestExtra{ID: msgid})
 		if err != nil {
@@ -1698,12 +1832,14 @@ func (s *server) SendContact() http.HandlerFunc {
 func (s *server) SendLocation() http.HandlerFunc {
 
 	type locationStruct struct {
-		Phone       string
-		Id          string
-		Name        string
-		Latitude    float64
-		Longitude   float64
-		ContextInfo waE2E.ContextInfo
+		Phone       string  `json:"phone"`
+		Id          string  `json:"id,omitempty"`
+		Name        string  `json:"name,omitempty"`
+		Latitude    float64 `json:"latitude"`
+		Longitude   float64 `json:"longitude"`
+		QuotedMsgId string  `json:"quoted_msg_id,omitempty"`
+		Participant string  `json:"participant,omitempty"`
+		Forwarded   bool    `json:"forwarded,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1738,7 +1874,14 @@ func (s *server) SendLocation() http.HandlerFunc {
 			return
 		}
 
-		recipient, err := validateMessageFields(t.Phone, t.ContextInfo.StanzaID, t.ContextInfo.Participant)
+		var stanzaIDPtr, participantPtr *string
+		if t.QuotedMsgId != "" {
+			stanzaIDPtr = &t.QuotedMsgId
+		}
+		if t.Participant != "" {
+			participantPtr = &t.Participant
+		}
+		recipient, err := validateMessageFields(t.Phone, stanzaIDPtr, participantPtr)
 		if err != nil {
 			log.Error().Msg(fmt.Sprintf("%s", err))
 			s.Respond(w, r, http.StatusBadRequest, err)
@@ -1757,21 +1900,15 @@ func (s *server) SendLocation() http.HandlerFunc {
 			Name:             &t.Name,
 		}}
 
-		if t.ContextInfo.StanzaID != nil {
+		if t.QuotedMsgId != "" {
 			msg.LocationMessage.ContextInfo = &waE2E.ContextInfo{
-				StanzaID:      proto.String(*t.ContextInfo.StanzaID),
-				Participant:   proto.String(*t.ContextInfo.Participant),
+				StanzaID:      proto.String(t.QuotedMsgId),
+				Participant:   proto.String(t.Participant),
 				QuotedMessage: &waE2E.Message{Conversation: proto.String("")},
 			}
 		}
-		if t.ContextInfo.MentionedJID != nil {
-			if msg.LocationMessage.ContextInfo == nil {
-				msg.LocationMessage.ContextInfo = &waE2E.ContextInfo{}
-			}
-			msg.LocationMessage.ContextInfo.MentionedJID = t.ContextInfo.MentionedJID
-		}
 
-		if t.ContextInfo.IsForwarded != nil && *t.ContextInfo.IsForwarded {
+		if t.Forwarded {
 			if msg.LocationMessage.ContextInfo == nil {
 				msg.LocationMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
@@ -1803,15 +1940,26 @@ func (s *server) SendLocation() http.HandlerFunc {
 // Sends Buttons (not implemented, does not work)
 func (s *server) SendButtons() http.HandlerFunc {
 
+	type buttonTextStruct struct {
+		DisplayText string `json:"displayText"`
+	}
 	type buttonStruct struct {
-		ButtonId   string
-		ButtonText string
+		ButtonId     string           `json:"buttonId"`
+		ButtonText   buttonTextStruct `json:"buttonText"`
+		Type         string           `json:"type,omitempty"`         // pix, url, phone, reply
+		URL          string           `json:"url,omitempty"`          // for url type
+		PhoneNumber  string           `json:"phone_number,omitempty"` // for phone type
+		PixKey       string           `json:"pix_key,omitempty"`      // for pix type
+		MerchantName string           `json:"merchant_name,omitempty"`
+		PixType      string           `json:"pix_type,omitempty"` // PHONE, CPF, CNPJ, EMAIL, EVP
 	}
 	type textStruct struct {
-		Phone   string
-		Title   string
-		Buttons []buttonStruct
-		Id      string
+		Phone   string         `json:"phone"`
+		Title   string         `json:"title,omitempty"`
+		Body    string         `json:"body,omitempty"`
+		Footer  string         `json:"footer,omitempty"`
+		Buttons []buttonStruct `json:"buttons"`
+		Id      string         `json:"id,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1835,27 +1983,32 @@ func (s *server) SendButtons() http.HandlerFunc {
 		}
 
 		if t.Phone == "" {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Phone in Payload"))
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing phone in Payload"))
 			return
 		}
 
-		if t.Title == "" {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Title in Payload"))
+		// Use body as main content, fallback to title for backwards compatibility
+		contentText := t.Body
+		if contentText == "" {
+			contentText = t.Title
+		}
+		if contentText == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing body or title in Payload"))
 			return
 		}
 
 		if len(t.Buttons) < 1 {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Buttons in Payload"))
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing buttons in Payload"))
 			return
 		}
 		if len(t.Buttons) > 3 {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("buttons cant more than 3"))
+			s.Respond(w, r, http.StatusBadRequest, errors.New("buttons cant be more than 3"))
 			return
 		}
 
 		recipient, ok := parseJID(t.Phone)
 		if !ok {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("could not parse Phone"))
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not parse phone"))
 			return
 		}
 
@@ -1868,18 +2021,70 @@ func (s *server) SendButtons() http.HandlerFunc {
 		var buttons []*waE2E.ButtonsMessage_Button
 
 		for _, item := range t.Buttons {
-			buttons = append(buttons, &waE2E.ButtonsMessage_Button{
+			button := &waE2E.ButtonsMessage_Button{
 				ButtonID:       proto.String(item.ButtonId),
-				ButtonText:     &waE2E.ButtonsMessage_Button_ButtonText{DisplayText: proto.String(item.ButtonText)},
+				ButtonText:     &waE2E.ButtonsMessage_Button_ButtonText{DisplayText: proto.String(item.ButtonText.DisplayText)},
 				Type:           waE2E.ButtonsMessage_Button_RESPONSE.Enum(),
 				NativeFlowInfo: &waE2E.ButtonsMessage_Button_NativeFlowInfo{},
-			})
+			}
+
+			// Handle different button types
+			switch item.Type {
+			case "url":
+				button.Type = waE2E.ButtonsMessage_Button_RESPONSE.Enum()
+				// URL buttons use native flow
+				if item.URL != "" {
+					button.NativeFlowInfo = &waE2E.ButtonsMessage_Button_NativeFlowInfo{
+						Name:       proto.String("cta_url"),
+						ParamsJSON: proto.String(fmt.Sprintf(`{"display_text":"%s","url":"%s"}`, item.ButtonText.DisplayText, item.URL)),
+					}
+				}
+			case "phone":
+				button.Type = waE2E.ButtonsMessage_Button_RESPONSE.Enum()
+				if item.PhoneNumber != "" {
+					button.NativeFlowInfo = &waE2E.ButtonsMessage_Button_NativeFlowInfo{
+						Name:       proto.String("cta_call"),
+						ParamsJSON: proto.String(fmt.Sprintf(`{"display_text":"%s","phone_number":"%s"}`, item.ButtonText.DisplayText, item.PhoneNumber)),
+					}
+				}
+			case "pix":
+				button.Type = waE2E.ButtonsMessage_Button_RESPONSE.Enum()
+				if item.PixKey != "" {
+					pixType := item.PixType
+					if pixType == "" {
+						pixType = "PHONE"
+					}
+					merchantName := item.MerchantName
+					if merchantName == "" {
+						merchantName = "Merchant"
+					}
+					button.NativeFlowInfo = &waE2E.ButtonsMessage_Button_NativeFlowInfo{
+						Name:       proto.String("cta_copy"),
+						ParamsJSON: proto.String(fmt.Sprintf(`{"display_text":"%s","copy_code":"%s","id":"pix_%s"}`, item.ButtonText.DisplayText, item.PixKey, item.ButtonId)),
+					}
+				}
+			default:
+				// Default reply button
+				button.Type = waE2E.ButtonsMessage_Button_RESPONSE.Enum()
+			}
+
+			buttons = append(buttons, button)
 		}
 
 		msg2 := &waE2E.ButtonsMessage{
-			ContentText: proto.String(t.Title),
+			ContentText: proto.String(contentText),
 			HeaderType:  waE2E.ButtonsMessage_EMPTY.Enum(),
 			Buttons:     buttons,
+		}
+
+		// Add title as header if provided separately from body
+		if t.Title != "" && t.Body != "" {
+			msg2.HeaderType = waE2E.ButtonsMessage_TEXT.Enum()
+		}
+
+		// Add footer if provided
+		if t.Footer != "" {
+			msg2.FooterText = proto.String(t.Footer)
 		}
 
 		resp, err = clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), recipient, &waE2E.Message{ViewOnceMessage: &waE2E.FutureProofMessage{
@@ -1909,21 +2114,21 @@ func (s *server) SendList() http.HandlerFunc {
 	type listItem struct {
 		Title string `json:"title"`
 		Desc  string `json:"desc"`
-		RowId string `json:"RowId"`
+		RowId string `json:"row_id"`
 	}
 	type section struct {
 		Title string     `json:"title"`
 		Rows  []listItem `json:"rows"`
 	}
 	type listRequest struct {
-		Phone      string     `json:"Phone"`
-		ButtonText string     `json:"ButtonText"`
-		Desc       string     `json:"Desc"`
-		TopText    string     `json:"TopText"`
-		Sections   []section  `json:"Sections"`
-		List       []listItem `json:"List"` // compatibility
-		FooterText string     `json:"FooterText"`
-		Id         string     `json:"Id,omitempty"`
+		Phone      string     `json:"phone"`
+		ButtonText string     `json:"button_text"`
+		Desc       string     `json:"desc"`
+		TopText    string     `json:"top_text"`
+		Sections   []section  `json:"sections"`
+		List       []listItem `json:"list"` // compatibility
+		FooterText string     `json:"footer_text,omitempty"`
+		Id         string     `json:"id,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2059,7 +2264,12 @@ func (s *server) SendList() http.HandlerFunc {
 func (s *server) SetStatusMessage() http.HandlerFunc {
 
 	type textStruct struct {
-		Body string
+		Text            string `json:"text"`
+		Body            string `json:"Body"` // For backwards compatibility
+		BackgroundColor string `json:"background_color,omitempty"`
+		TextColor       string `json:"text_color,omitempty"`
+		Font            int    `json:"font,omitempty"`
+		Id              string `json:"id,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2071,9 +2281,6 @@ func (s *server) SetStatusMessage() http.HandlerFunc {
 			return
 		}
 
-		msgid := ""
-		var resp whatsmeow.SendResponse
-
 		decoder := json.NewDecoder(r.Body)
 		var t textStruct
 		err := decoder.Decode(&t)
@@ -2082,42 +2289,409 @@ func (s *server) SetStatusMessage() http.HandlerFunc {
 			return
 		}
 
-		if t.Body == "" {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Body in Payload"))
+		// Support both "text" and "Body" fields
+		text := t.Text
+		if text == "" {
+			text = t.Body
+		}
+
+		if text == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing text in Payload"))
 			return
 		}
 
-		msg := proto.String(t.Body)
+		// Generate message ID if not provided
+		msgid := t.Id
+		if msgid == "" {
+			msgid = clientManager.GetWhatsmeowClient(txtid).GenerateMessageID()
+		}
 
-		err = clientManager.GetWhatsmeowClient(txtid).SetStatusMessage(context.Background(), *msg)
+		// Build the status message with ExtendedTextMessage for styling
+		statusJID := types.JID{User: "status", Server: types.BroadcastServer}
+
+		// Parse colors (they come as uint32 strings)
+		var bgColor, txtColor uint32
+		if t.BackgroundColor != "" {
+			if val, err := strconv.ParseUint(t.BackgroundColor, 10, 32); err == nil {
+				bgColor = uint32(val)
+			}
+		}
+		if t.TextColor != "" {
+			if val, err := strconv.ParseUint(t.TextColor, 10, 32); err == nil {
+				txtColor = uint32(val)
+			}
+		}
+
+		msg := &waE2E.Message{
+			ExtendedTextMessage: &waE2E.ExtendedTextMessage{
+				Text:            proto.String(text),
+				BackgroundArgb:  proto.Uint32(bgColor),
+				TextArgb:        proto.Uint32(txtColor),
+				Font:            waE2E.ExtendedTextMessage_FontType(t.Font).Enum(),
+			},
+		}
+
+		resp, err := clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), statusJID, msg, whatsmeow.SendRequestExtra{ID: msgid})
 		if err != nil {
 			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("error sending status message: %v", err)))
 			return
 		}
 
 		log.Info().Str("timestamp", fmt.Sprintf("%v", resp.Timestamp)).Str("id", msgid).Msg("Status message sent")
-		response := map[string]interface{}{"Details": "Set"}
+		response := map[string]interface{}{"Details": "Status text posted", "Timestamp": resp.Timestamp.Unix(), "Id": msgid}
 		responseJson, err := json.Marshal(response)
 		if err != nil {
 			s.Respond(w, r, http.StatusInternalServerError, err)
 		} else {
 			s.Respond(w, r, http.StatusOK, string(responseJson))
 		}
+	}
+}
 
-		return
+// SetStatusImage posts an image to status/story
+func (s *server) SetStatusImage() http.HandlerFunc {
+
+	type imageStatusStruct struct {
+		Image    string `json:"Image"`
+		Caption  string `json:"Caption,omitempty"`
+		MimeType string `json:"MimeType,omitempty"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		if clientManager.GetWhatsmeowClient(txtid) == nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("no session"))
+			return
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		var t imageStatusStruct
+		err := decoder.Decode(&t)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode Payload"))
+			return
+		}
+
+		if t.Image == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Image in Payload"))
+			return
+		}
+
+		var filedata []byte
+		var thumbnailBytes []byte
+
+		if len(t.Image) >= 10 && t.Image[0:10] == "data:image" {
+			var dataURL, err = dataurl.DecodeString(t.Image)
+			if err != nil {
+				s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode base64 encoded data from payload"))
+				return
+			}
+			filedata = dataURL.Data
+		} else if isHTTPURL(t.Image) {
+			data, ct, err := fetchURLBytes(r.Context(), t.Image, openGraphImageMaxBytes)
+			if err != nil {
+				s.Respond(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("failed to fetch image from url: %v", err)))
+				return
+			}
+			mimeType := ct
+			if !strings.HasPrefix(strings.ToLower(mimeType), "image/") {
+				mimeType = "image/jpeg"
+			}
+			imgDataURL := dataurl.New(data, mimeType)
+			parsed, err := dataurl.DecodeString(imgDataURL.String())
+			if err != nil {
+				s.Respond(w, r, http.StatusInternalServerError, errors.New("could not re-encode image to base64"))
+				return
+			}
+			filedata = parsed.Data
+		} else {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("Image data should start with \"data:image/png;base64,\" or be a URL"))
+			return
+		}
+
+		uploaded, err := clientManager.GetWhatsmeowClient(txtid).Upload(context.Background(), filedata, whatsmeow.MediaImage)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("failed to upload file: %v", err)))
+			return
+		}
+
+		// Create thumbnail
+		reader := bytes.NewReader(filedata)
+		img, _, err := image.Decode(reader)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("could not decode image for thumbnail: %v", err)))
+			return
+		}
+
+		m := resize.Thumbnail(72, 72, img, resize.Lanczos3)
+		tmpFile, err := os.CreateTemp("", "status-thumb-*.jpg")
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("could not create temp file: %v", err)))
+			return
+		}
+		defer tmpFile.Close()
+
+		if err := jpeg.Encode(tmpFile, m, nil); err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("failed to encode jpeg: %v", err)))
+			return
+		}
+
+		thumbnailBytes, err = os.ReadFile(tmpFile.Name())
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("failed to read thumbnail: %v", err)))
+			return
+		}
+		os.Remove(tmpFile.Name())
+
+		mimeType := t.MimeType
+		if mimeType == "" {
+			mimeType = "image/jpeg"
+		}
+
+		msg := &waE2E.Message{
+			ImageMessage: &waE2E.ImageMessage{
+				Caption:       proto.String(t.Caption),
+				URL:           proto.String(uploaded.URL),
+				DirectPath:    proto.String(uploaded.DirectPath),
+				MediaKey:      uploaded.MediaKey,
+				Mimetype:      proto.String(mimeType),
+				FileEncSHA256: uploaded.FileEncSHA256,
+				FileSHA256:    uploaded.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(filedata))),
+				JPEGThumbnail: thumbnailBytes,
+			},
+		}
+
+		statusJID := types.JID{User: "status", Server: types.BroadcastServer}
+		msgid := clientManager.GetWhatsmeowClient(txtid).GenerateMessageID()
+		resp, err := clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), statusJID, msg, whatsmeow.SendRequestExtra{ID: msgid})
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("error posting status image: %v", err)))
+			return
+		}
+
+		log.Info().Str("timestamp", fmt.Sprintf("%v", resp.Timestamp)).Str("id", msgid).Msg("Status image posted")
+		response := map[string]interface{}{"Details": "Status image posted", "Timestamp": resp.Timestamp.Unix(), "Id": msgid}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// SetStatusVideo posts a video to status/story
+func (s *server) SetStatusVideo() http.HandlerFunc {
+
+	type videoStatusStruct struct {
+		Video    string `json:"Video"`
+		Caption  string `json:"Caption,omitempty"`
+		MimeType string `json:"MimeType,omitempty"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		if clientManager.GetWhatsmeowClient(txtid) == nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("no session"))
+			return
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		var t videoStatusStruct
+		err := decoder.Decode(&t)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode Payload"))
+			return
+		}
+
+		if t.Video == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Video in Payload"))
+			return
+		}
+
+		var filedata []byte
+
+		if strings.HasPrefix(t.Video, "data:video") {
+			var dataURL, err = dataurl.DecodeString(t.Video)
+			if err != nil {
+				s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode base64 encoded data from payload"))
+				return
+			}
+			filedata = dataURL.Data
+		} else if isHTTPURL(t.Video) {
+			data, _, err := fetchURLBytes(r.Context(), t.Video, 100*1024*1024) // 100MB max
+			if err != nil {
+				s.Respond(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("failed to fetch video from url: %v", err)))
+				return
+			}
+			filedata = data
+		} else {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("Video data should start with \"data:video/\" or be a URL"))
+			return
+		}
+
+		uploaded, err := clientManager.GetWhatsmeowClient(txtid).Upload(context.Background(), filedata, whatsmeow.MediaVideo)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("failed to upload video: %v", err)))
+			return
+		}
+
+		mimeType := t.MimeType
+		if mimeType == "" {
+			mimeType = "video/mp4"
+		}
+
+		msg := &waE2E.Message{
+			VideoMessage: &waE2E.VideoMessage{
+				Caption:       proto.String(t.Caption),
+				URL:           proto.String(uploaded.URL),
+				DirectPath:    proto.String(uploaded.DirectPath),
+				MediaKey:      uploaded.MediaKey,
+				Mimetype:      proto.String(mimeType),
+				FileEncSHA256: uploaded.FileEncSHA256,
+				FileSHA256:    uploaded.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(filedata))),
+			},
+		}
+
+		statusJID := types.JID{User: "status", Server: types.BroadcastServer}
+		msgid := clientManager.GetWhatsmeowClient(txtid).GenerateMessageID()
+		resp, err := clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), statusJID, msg, whatsmeow.SendRequestExtra{ID: msgid})
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("error posting status video: %v", err)))
+			return
+		}
+
+		log.Info().Str("timestamp", fmt.Sprintf("%v", resp.Timestamp)).Str("id", msgid).Msg("Status video posted")
+		response := map[string]interface{}{"Details": "Status video posted", "Timestamp": resp.Timestamp.Unix(), "Id": msgid}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// SetStatusAudio posts an audio to status/story
+func (s *server) SetStatusAudio() http.HandlerFunc {
+
+	type audioStatusStruct struct {
+		Audio    string `json:"Audio"`
+		MimeType string `json:"MimeType,omitempty"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		if clientManager.GetWhatsmeowClient(txtid) == nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("no session"))
+			return
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		var t audioStatusStruct
+		err := decoder.Decode(&t)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode Payload"))
+			return
+		}
+
+		if t.Audio == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Audio in Payload"))
+			return
+		}
+
+		var filedata []byte
+
+		if strings.HasPrefix(t.Audio, "data:audio") {
+			var dataURL, err = dataurl.DecodeString(t.Audio)
+			if err != nil {
+				s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode base64 encoded data from payload"))
+				return
+			}
+			filedata = dataURL.Data
+		} else if isHTTPURL(t.Audio) {
+			data, _, err := fetchURLBytes(r.Context(), t.Audio, 50*1024*1024) // 50MB max
+			if err != nil {
+				s.Respond(w, r, http.StatusBadRequest, errors.New(fmt.Sprintf("failed to fetch audio from url: %v", err)))
+				return
+			}
+			filedata = data
+		} else {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("Audio data should start with \"data:audio/\" or be a URL"))
+			return
+		}
+
+		uploaded, err := clientManager.GetWhatsmeowClient(txtid).Upload(context.Background(), filedata, whatsmeow.MediaAudio)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("failed to upload audio: %v", err)))
+			return
+		}
+
+		mimeType := t.MimeType
+		if mimeType == "" {
+			mimeType = "audio/ogg; codecs=opus"
+		}
+
+		msg := &waE2E.Message{
+			AudioMessage: &waE2E.AudioMessage{
+				URL:           proto.String(uploaded.URL),
+				DirectPath:    proto.String(uploaded.DirectPath),
+				MediaKey:      uploaded.MediaKey,
+				Mimetype:      proto.String(mimeType),
+				FileEncSHA256: uploaded.FileEncSHA256,
+				FileSHA256:    uploaded.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(filedata))),
+				PTT:           proto.Bool(true),
+			},
+		}
+
+		statusJID := types.JID{User: "status", Server: types.BroadcastServer}
+		msgid := clientManager.GetWhatsmeowClient(txtid).GenerateMessageID()
+		resp, err := clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), statusJID, msg, whatsmeow.SendRequestExtra{ID: msgid})
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("error posting status audio: %v", err)))
+			return
+		}
+
+		log.Info().Str("timestamp", fmt.Sprintf("%v", resp.Timestamp)).Str("id", msgid).Msg("Status audio posted")
+		response := map[string]interface{}{"Details": "Status audio posted", "Timestamp": resp.Timestamp.Unix(), "Id": msgid}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
 	}
 }
 
 // Sends a regular text message
 func (s *server) SendMessage() http.HandlerFunc {
 
+	type contextInfoStruct struct {
+		StanzaID      string   `json:"stanza_id,omitempty"`
+		Participant   string   `json:"participant,omitempty"`
+		MentionedJID  []string `json:"mentioned_jid,omitempty"`
+		IsForwarded   bool     `json:"is_forwarded,omitempty"`
+	}
+
 	type textStruct struct {
-		Phone       string
-		Body        string
-		LinkPreview bool
-		Id          string
-		ContextInfo waE2E.ContextInfo
-		QuotedText  string `json:"QuotedText,omitempty"`
+		// dinastiAPI format (lowercase)
+		Phone       string            `json:"phone"`
+		Text        string            `json:"text,omitempty"`
+		Body        string            `json:"Body,omitempty"` // backwards compatibility
+		LinkPreview bool              `json:"link_preview,omitempty"`
+		Id          string            `json:"id,omitempty"`
+		Presence    int               `json:"presence,omitempty"`
+		QuotedMsgId string            `json:"quoted_msg_id,omitempty"`
+		QuotedText  string            `json:"quoted_text,omitempty"`
+		Mentions    []string          `json:"mentions,omitempty"`
+		Forwarded   bool              `json:"forwarded,omitempty"`
+		ContextInfo contextInfoStruct `json:"context_info,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2141,16 +2715,36 @@ func (s *server) SendMessage() http.HandlerFunc {
 		}
 
 		if t.Phone == "" {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Phone in Payload"))
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing phone in Payload"))
 			return
 		}
 
-		if t.Body == "" {
-			s.Respond(w, r, http.StatusBadRequest, errors.New("missing Body in Payload"))
+		// Support both "text" (dinastiAPI) and "Body" (backwards compatibility)
+		messageText := t.Text
+		if messageText == "" {
+			messageText = t.Body
+		}
+		if messageText == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing text in Payload"))
 			return
 		}
 
-		recipient, err := validateMessageFields(t.Phone, t.ContextInfo.StanzaID, t.ContextInfo.Participant)
+		// Handle quoted message ID - support both formats
+		quotedMsgId := t.QuotedMsgId
+		if quotedMsgId == "" {
+			quotedMsgId = t.ContextInfo.StanzaID
+		}
+		participant := t.ContextInfo.Participant
+
+		var stanzaIDPtr, participantPtr *string
+		if quotedMsgId != "" {
+			stanzaIDPtr = &quotedMsgId
+		}
+		if participant != "" {
+			participantPtr = &participant
+		}
+
+		recipient, err := validateMessageFields(t.Phone, stanzaIDPtr, participantPtr)
 		if err != nil {
 			log.Error().Msg(fmt.Sprintf("%s", err))
 			s.Respond(w, r, http.StatusBadRequest, err)
@@ -2171,7 +2765,7 @@ func (s *server) SendMessage() http.HandlerFunc {
 		)
 
 		if t.LinkPreview {
-			url = extractFirstURL(t.Body)
+			url = extractFirstURL(messageText)
 			if url != "" {
 				title, description, imageData = getOpenGraphData(r.Context(), url, txtid)
 			}
@@ -2179,7 +2773,7 @@ func (s *server) SendMessage() http.HandlerFunc {
 
 		msg := &waE2E.Message{
 			ExtendedTextMessage: &waE2E.ExtendedTextMessage{
-				Text:          proto.String(t.Body),
+				Text:          proto.String(messageText),
 				MatchedText:   proto.String(url),
 				Title:         proto.String(title),
 				Description:   proto.String(description),
@@ -2187,7 +2781,8 @@ func (s *server) SendMessage() http.HandlerFunc {
 			},
 		}
 
-		if t.ContextInfo.StanzaID != nil {
+		// Handle quoted message
+		if quotedMsgId != "" {
 			qm := &waE2E.Message{}
 			if t.QuotedText != "" {
 				qm.ExtendedTextMessage = &waE2E.ExtendedTextMessage{
@@ -2197,23 +2792,44 @@ func (s *server) SendMessage() http.HandlerFunc {
 				qm.Conversation = proto.String("")
 			}
 			msg.ExtendedTextMessage.ContextInfo = &waE2E.ContextInfo{
-				StanzaID:      proto.String(*t.ContextInfo.StanzaID),
-				Participant:   proto.String(*t.ContextInfo.Participant),
+				StanzaID:      proto.String(quotedMsgId),
+				Participant:   proto.String(participant),
 				QuotedMessage: qm,
 			}
 		}
-		if t.ContextInfo.MentionedJID != nil {
+
+		// Handle mentions - support both formats
+		mentions := t.Mentions
+		if len(mentions) == 0 {
+			mentions = t.ContextInfo.MentionedJID
+		}
+		if len(mentions) > 0 {
 			if msg.ExtendedTextMessage.ContextInfo == nil {
 				msg.ExtendedTextMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
-			msg.ExtendedTextMessage.ContextInfo.MentionedJID = t.ContextInfo.MentionedJID
+			msg.ExtendedTextMessage.ContextInfo.MentionedJID = mentions
 		}
 
-		if t.ContextInfo.IsForwarded != nil && *t.ContextInfo.IsForwarded {
+		// Handle forwarded - support both formats
+		isForwarded := t.Forwarded || t.ContextInfo.IsForwarded
+		if isForwarded {
 			if msg.ExtendedTextMessage.ContextInfo == nil {
 				msg.ExtendedTextMessage.ContextInfo = &waE2E.ContextInfo{}
 			}
 			msg.ExtendedTextMessage.ContextInfo.IsForwarded = proto.Bool(true)
+		}
+
+		// Send typing presence if Presence > 0
+		if t.Presence > 0 {
+			err = clientManager.GetWhatsmeowClient(txtid).SendChatPresence(context.Background(), recipient, types.ChatPresenceComposing, types.ChatPresenceMediaText)
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to send typing presence")
+			} else {
+				// Wait for the specified duration
+				time.Sleep(time.Duration(t.Presence) * time.Millisecond)
+				// Send paused presence after typing
+				_ = clientManager.GetWhatsmeowClient(txtid).SendChatPresence(context.Background(), recipient, types.ChatPresencePaused, types.ChatPresenceMediaText)
+			}
 		}
 
 		resp, err = clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), recipient, msg, whatsmeow.SendRequestExtra{ID: msgid})
@@ -2224,7 +2840,7 @@ func (s *server) SendMessage() http.HandlerFunc {
 
 		historyStr := r.Context().Value("userinfo").(Values).Get("History")
 		historyLimit, _ := strconv.Atoi(historyStr)
-		s.saveOutgoingMessageToHistory(txtid, recipient.String(), msgid, "text", t.Body, "", historyLimit)
+		s.saveOutgoingMessageToHistory(txtid, recipient.String(), msgid, "text", messageText, "", historyLimit)
 
 		log.Info().Str("timestamp", fmt.Sprintf("%v", resp.Timestamp)).Str("id", msgid).Msg("Message sent")
 		response := map[string]interface{}{"Details": "Sent", "Timestamp": resp.Timestamp.Unix(), "Id": msgid}
@@ -2244,7 +2860,7 @@ func (s *server) SendPoll() http.HandlerFunc {
 		Group   string   `json:"group"`   // The recipient's group id (120363313346913103@g.us)
 		Header  string   `json:"header"`  // The poll's headline text
 		Options []string `json:"options"` // The list of poll options
-		Id      string
+		Id      string   `json:"id,omitempty"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2303,6 +2919,553 @@ func (s *server) SendPoll() http.HandlerFunc {
 		log.Info().Str("timestamp", fmt.Sprintf("%v", resp.Timestamp)).Str("id", msgid).Msg("Poll sent")
 
 		response := map[string]interface{}{"Details": "Poll sent successfully", "Id": msgid}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// Send carousel message
+func (s *server) SendCarousel() http.HandlerFunc {
+	type carouselButton struct {
+		Id    string `json:"id,omitempty"`
+		Label string `json:"label"`
+		Url   string `json:"url,omitempty"`
+		Type  string `json:"type"` // reply, url, copy, call
+	}
+	type carouselCard struct {
+		Text      string           `json:"text"`
+		MediaUrl  string           `json:"media_url,omitempty"`
+		MediaType string           `json:"media_type,omitempty"` // image, video, document
+		Filename  string           `json:"filename,omitempty"`
+		Caption   string           `json:"caption,omitempty"`
+		Buttons   []carouselButton `json:"buttons"`
+	}
+	type carouselRequest struct {
+		Phone    string         `json:"phone"`
+		Message  string         `json:"message"`
+		Carousel []carouselCard `json:"carousel"`
+		Id       string         `json:"id,omitempty"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		if clientManager.GetWhatsmeowClient(txtid) == nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("no session"))
+			return
+		}
+
+		var req carouselRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode payload"))
+			return
+		}
+
+		if req.Phone == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing phone in payload"))
+			return
+		}
+		if req.Message == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing message in payload"))
+			return
+		}
+		if len(req.Carousel) == 0 {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("carousel must have at least 1 card"))
+			return
+		}
+
+		recipient, err := validateMessageFields(req.Phone, nil, nil)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		msgid := req.Id
+		if msgid == "" {
+			msgid = clientManager.GetWhatsmeowClient(txtid).GenerateMessageID()
+		}
+
+		// Build carousel cards
+		var cards []*waE2E.InteractiveMessage
+		for _, card := range req.Carousel {
+			cardMsg := &waE2E.InteractiveMessage{
+				Body: &waE2E.InteractiveMessage_Body{
+					Text: proto.String(card.Text),
+				},
+			}
+			cards = append(cards, cardMsg)
+		}
+
+		// Create interactive message with carousel
+		msg := &waE2E.Message{
+			InteractiveMessage: &waE2E.InteractiveMessage{
+				Header: &waE2E.InteractiveMessage_Header{
+					Title:              proto.String(req.Message),
+					HasMediaAttachment: proto.Bool(false),
+				},
+				Body: &waE2E.InteractiveMessage_Body{
+					Text: proto.String(req.Message),
+				},
+				InteractiveMessage: &waE2E.InteractiveMessage_CarouselMessage_{
+					CarouselMessage: &waE2E.InteractiveMessage_CarouselMessage{
+						Cards:          cards,
+						MessageVersion: proto.Int32(1),
+					},
+				},
+			},
+		}
+
+		resp, err := clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), recipient, msg, whatsmeow.SendRequestExtra{ID: msgid})
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("error sending carousel: %v", err)))
+			return
+		}
+
+		log.Info().Str("timestamp", fmt.Sprintf("%v", resp.Timestamp)).Str("id", msgid).Msg("Carousel sent")
+		response := map[string]interface{}{"Details": "Sent", "Timestamp": resp.Timestamp.Unix(), "Id": msgid}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// Send event message
+func (s *server) SendEvent() http.HandlerFunc {
+	type eventLocation struct {
+		Name             string  `json:"name,omitempty"`
+		DegreesLatitude  float64 `json:"degrees_latitude,omitempty"`
+		DegreesLongitude float64 `json:"degrees_longitude,omitempty"`
+	}
+	type eventRequest struct {
+		Phone              string         `json:"phone"`
+		Name               string         `json:"name"`
+		Description        string         `json:"description,omitempty"`
+		StartTime          int64          `json:"start_time"`
+		EndTime            int64          `json:"end_time,omitempty"`
+		ExtraGuestsAllowed bool           `json:"extra_guests_allowed,omitempty"`
+		IsCanceled         bool           `json:"is_canceled,omitempty"`
+		IsScheduleCall     bool           `json:"is_schedule_call,omitempty"`
+		Location           *eventLocation `json:"location,omitempty"`
+		Id                 string         `json:"id,omitempty"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		if clientManager.GetWhatsmeowClient(txtid) == nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("no session"))
+			return
+		}
+
+		var req eventRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode payload"))
+			return
+		}
+
+		if req.Phone == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing phone in payload"))
+			return
+		}
+		if req.Name == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing name in payload"))
+			return
+		}
+		if req.StartTime == 0 {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing start_time in payload"))
+			return
+		}
+
+		recipient, err := validateMessageFields(req.Phone, nil, nil)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		msgid := req.Id
+		if msgid == "" {
+			msgid = clientManager.GetWhatsmeowClient(txtid).GenerateMessageID()
+		}
+
+		eventMsg := &waE2E.EventMessage{
+			ContextInfo:        &waE2E.ContextInfo{},
+			Name:               proto.String(req.Name),
+			StartTime:          proto.Int64(req.StartTime),
+			ExtraGuestsAllowed: proto.Bool(req.ExtraGuestsAllowed),
+			IsCanceled:         proto.Bool(req.IsCanceled),
+			IsScheduleCall:     proto.Bool(req.IsScheduleCall),
+		}
+
+		if req.Description != "" {
+			eventMsg.Description = proto.String(req.Description)
+		}
+		if req.EndTime != 0 {
+			eventMsg.EndTime = proto.Int64(req.EndTime)
+		}
+		if req.Location != nil {
+			eventMsg.Location = &waE2E.LocationMessage{
+				Name:             proto.String(req.Location.Name),
+				DegreesLatitude:  proto.Float64(req.Location.DegreesLatitude),
+				DegreesLongitude: proto.Float64(req.Location.DegreesLongitude),
+			}
+		}
+
+		msg := &waE2E.Message{EventMessage: eventMsg}
+
+		resp, err := clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), recipient, msg, whatsmeow.SendRequestExtra{ID: msgid})
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("error sending event: %v", err)))
+			return
+		}
+
+		log.Info().Str("timestamp", fmt.Sprintf("%v", resp.Timestamp)).Str("id", msgid).Msg("Event sent")
+		response := map[string]interface{}{"Details": "Sent", "Timestamp": resp.Timestamp.Unix(), "Id": msgid}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// Send flow message
+func (s *server) SendFlow() http.HandlerFunc {
+	type flowButton struct {
+		Name             string                 `json:"name"`
+		ButtonParams     map[string]interface{} `json:"button_params,omitempty"`
+		ButtonParamsJSON string                 `json:"button_params_json,omitempty"`
+	}
+	type flowRequest struct {
+		Phone          string                 `json:"phone"`
+		Body           string                 `json:"body,omitempty"`
+		Text           string                 `json:"text,omitempty"`
+		Footer         string                 `json:"footer,omitempty"`
+		Buttons        []flowButton           `json:"buttons"`
+		MessageVersion int32                  `json:"message_version,omitempty"`
+		MessageParams  map[string]interface{} `json:"message_params,omitempty"`
+		Id             string                 `json:"id,omitempty"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		if clientManager.GetWhatsmeowClient(txtid) == nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("no session"))
+			return
+		}
+
+		var req flowRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode payload"))
+			return
+		}
+
+		if req.Phone == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing phone in payload"))
+			return
+		}
+		if len(req.Buttons) == 0 {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("buttons are required"))
+			return
+		}
+
+		// Get body text from Body or Text field
+		bodyText := req.Body
+		if bodyText == "" {
+			bodyText = req.Text
+		}
+
+		recipient, err := validateMessageFields(req.Phone, nil, nil)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		msgid := req.Id
+		if msgid == "" {
+			msgid = clientManager.GetWhatsmeowClient(txtid).GenerateMessageID()
+		}
+
+		// Build flow buttons
+		var buttons []*waE2E.InteractiveMessage_NativeFlowMessage_NativeFlowButton
+		for _, btn := range req.Buttons {
+			var paramsJSON string
+			if btn.ButtonParamsJSON != "" {
+				paramsJSON = btn.ButtonParamsJSON
+			} else if btn.ButtonParams != nil {
+				jsonBytes, _ := json.Marshal(btn.ButtonParams)
+				paramsJSON = string(jsonBytes)
+			}
+			buttons = append(buttons, &waE2E.InteractiveMessage_NativeFlowMessage_NativeFlowButton{
+				Name:             proto.String(btn.Name),
+				ButtonParamsJSON: proto.String(paramsJSON),
+			})
+		}
+
+		// Build message params JSON
+		var messageParamsJSON string
+		if req.MessageParams != nil {
+			jsonBytes, _ := json.Marshal(req.MessageParams)
+			messageParamsJSON = string(jsonBytes)
+		}
+
+		// Create interactive message with native flow
+		interactiveMsg := &waE2E.InteractiveMessage{
+			Body: &waE2E.InteractiveMessage_Body{
+				Text: proto.String(bodyText),
+			},
+			InteractiveMessage: &waE2E.InteractiveMessage_NativeFlowMessage_{
+				NativeFlowMessage: &waE2E.InteractiveMessage_NativeFlowMessage{
+					Buttons:           buttons,
+					MessageParamsJSON: proto.String(messageParamsJSON),
+				},
+			},
+		}
+
+		if req.Footer != "" {
+			interactiveMsg.Footer = &waE2E.InteractiveMessage_Footer{
+				Text: proto.String(req.Footer),
+			}
+		}
+
+		msg := &waE2E.Message{InteractiveMessage: interactiveMsg}
+
+		resp, err := clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), recipient, msg, whatsmeow.SendRequestExtra{ID: msgid})
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("error sending flow: %v", err)))
+			return
+		}
+
+		log.Info().Str("timestamp", fmt.Sprintf("%v", resp.Timestamp)).Str("id", msgid).Msg("Flow sent")
+		response := map[string]interface{}{"Details": "Sent", "Timestamp": resp.Timestamp.Unix(), "Id": msgid}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// Send link message with preview
+func (s *server) SendLink() http.HandlerFunc {
+	type linkRequest struct {
+		Phone       string   `json:"phone"`
+		Link        string   `json:"link"`
+		Caption     string   `json:"caption,omitempty"`
+		Id          string   `json:"id,omitempty"`
+		Mentions    []string `json:"mentions,omitempty"`
+		QuotedMsgId string   `json:"quoted_msg_id,omitempty"`
+		Participant string   `json:"participant,omitempty"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		if clientManager.GetWhatsmeowClient(txtid) == nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("no session"))
+			return
+		}
+
+		var req linkRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode payload"))
+			return
+		}
+
+		if req.Phone == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing phone in payload"))
+			return
+		}
+		if req.Link == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing link in payload"))
+			return
+		}
+
+		var stanzaIDPtr, participantPtr *string
+		if req.QuotedMsgId != "" {
+			stanzaIDPtr = &req.QuotedMsgId
+		}
+		if req.Participant != "" {
+			participantPtr = &req.Participant
+		}
+		recipient, err := validateMessageFields(req.Phone, stanzaIDPtr, participantPtr)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		msgid := req.Id
+		if msgid == "" {
+			msgid = clientManager.GetWhatsmeowClient(txtid).GenerateMessageID()
+		}
+
+		// Build message text with link
+		msgText := req.Link
+		if req.Caption != "" {
+			msgText = req.Caption + "\n" + req.Link
+		}
+
+		msg := &waE2E.Message{
+			ExtendedTextMessage: &waE2E.ExtendedTextMessage{
+				Text:        proto.String(msgText),
+				MatchedText: proto.String(req.Link),
+			},
+		}
+
+		// Add context info for replies and mentions
+		if req.QuotedMsgId != "" {
+			msg.ExtendedTextMessage.ContextInfo = &waE2E.ContextInfo{
+				StanzaID:      proto.String(req.QuotedMsgId),
+				Participant:   proto.String(req.Participant),
+				QuotedMessage: &waE2E.Message{Conversation: proto.String("")},
+			}
+		}
+		if len(req.Mentions) > 0 {
+			if msg.ExtendedTextMessage.ContextInfo == nil {
+				msg.ExtendedTextMessage.ContextInfo = &waE2E.ContextInfo{}
+			}
+			msg.ExtendedTextMessage.ContextInfo.MentionedJID = req.Mentions
+		}
+
+		resp, err := clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), recipient, msg, whatsmeow.SendRequestExtra{ID: msgid})
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("error sending link: %v", err)))
+			return
+		}
+
+		log.Info().Str("timestamp", fmt.Sprintf("%v", resp.Timestamp)).Str("id", msgid).Msg("Link sent")
+		response := map[string]interface{}{"Details": "Sent", "Timestamp": resp.Timestamp.Unix(), "Id": msgid}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// Send PTV (Push-to-Talk Video) message
+func (s *server) SendPTV() http.HandlerFunc {
+	type ptvRequest struct {
+		Phone string `json:"phone"`
+		Video string `json:"video"`
+		Id    string `json:"id,omitempty"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		if clientManager.GetWhatsmeowClient(txtid) == nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("no session"))
+			return
+		}
+
+		var req ptvRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode payload"))
+			return
+		}
+
+		if req.Phone == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing phone in payload"))
+			return
+		}
+		if req.Video == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing video in payload"))
+			return
+		}
+
+		recipient, err := validateMessageFields(req.Phone, nil, nil)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		msgid := req.Id
+		if msgid == "" {
+			msgid = clientManager.GetWhatsmeowClient(txtid).GenerateMessageID()
+		}
+
+		// Get video data (base64 or URL)
+		var videoData []byte
+		var mimetype string
+
+		if strings.HasPrefix(req.Video, "data:") {
+			// Base64 data URL
+			dataParts := strings.SplitN(req.Video, ",", 2)
+			if len(dataParts) != 2 {
+				s.Respond(w, r, http.StatusBadRequest, errors.New("invalid data URL format"))
+				return
+			}
+			videoData, err = base64.StdEncoding.DecodeString(dataParts[1])
+			if err != nil {
+				s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode base64 video"))
+				return
+			}
+			// Extract mimetype from data URL
+			mimeMatch := strings.TrimPrefix(dataParts[0], "data:")
+			mimeMatch = strings.TrimSuffix(mimeMatch, ";base64")
+			mimetype = mimeMatch
+		} else if strings.HasPrefix(req.Video, "http") {
+			// URL - download the video
+			resp, err := http.Get(req.Video)
+			if err != nil {
+				s.Respond(w, r, http.StatusBadRequest, errors.New("could not download video"))
+				return
+			}
+			defer resp.Body.Close()
+			videoData, err = io.ReadAll(resp.Body)
+			if err != nil {
+				s.Respond(w, r, http.StatusBadRequest, errors.New("could not read video data"))
+				return
+			}
+			mimetype = resp.Header.Get("Content-Type")
+		} else {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("video must be base64 data URL or HTTP URL"))
+			return
+		}
+
+		if mimetype == "" {
+			mimetype = "video/mp4"
+		}
+
+		// Upload video
+		uploaded, err := clientManager.GetWhatsmeowClient(txtid).Upload(context.Background(), videoData, whatsmeow.MediaVideo)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("failed to upload video: %v", err)))
+			return
+		}
+
+		// Create PTV message (video with PtvMessage wrapper)
+		msg := &waE2E.Message{
+			PtvMessage: &waE2E.VideoMessage{
+				URL:           proto.String(uploaded.URL),
+				DirectPath:    proto.String(uploaded.DirectPath),
+				MediaKey:      uploaded.MediaKey,
+				Mimetype:      proto.String(mimetype),
+				FileEncSHA256: uploaded.FileEncSHA256,
+				FileSHA256:    uploaded.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(videoData))),
+			},
+		}
+
+		resp, err := clientManager.GetWhatsmeowClient(txtid).SendMessage(context.Background(), recipient, msg, whatsmeow.SendRequestExtra{ID: msgid})
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("error sending PTV: %v", err)))
+			return
+		}
+
+		log.Info().Str("timestamp", fmt.Sprintf("%v", resp.Timestamp)).Str("id", msgid).Msg("PTV sent")
+		response := map[string]interface{}{"Details": "Sent", "Timestamp": resp.Timestamp.Unix(), "Id": msgid}
 		responseJson, err := json.Marshal(response)
 		if err != nil {
 			s.Respond(w, r, http.StatusInternalServerError, err)
@@ -7074,5 +8237,207 @@ func (s *server) SetSkipCallsConfig() http.HandlerFunc {
 		response := map[string]interface{}{"Details": "Skip calls config saved"}
 		responseJson, _ := json.Marshal(response)
 		s.Respond(w, r, http.StatusOK, string(responseJson))
+	}
+}
+
+// PinChat pins or unpins a chat
+func (s *server) PinChat() http.HandlerFunc {
+
+	type requestPinStruct struct {
+		Jid string `json:"jid"`
+		Pin bool   `json:"pin"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		client := clientManager.GetWhatsmeowClient(txtid)
+
+		if client == nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("no session"))
+			return
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		var t requestPinStruct
+		err := decoder.Decode(&t)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode Payload"))
+			return
+		}
+
+		// Validate required fields
+		if t.Jid == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing jid in Payload"))
+			return
+		}
+
+		chatJID, err := types.ParseJID(t.Jid)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("invalid Chat JID format"))
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		err = client.SendAppState(ctx, appstate.BuildPin(chatJID, t.Pin))
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("failed to pin chat: %s", err)))
+			return
+		}
+
+		statusText := "Chat pinned"
+		if !t.Pin {
+			statusText = "Chat unpinned"
+		}
+		response := map[string]interface{}{
+			"success": true,
+			"message": statusText,
+		}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// GetPrivacySettings returns the current privacy settings
+func (s *server) GetPrivacySettings() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		client := clientManager.GetWhatsmeowClient(txtid)
+
+		if client == nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("no session"))
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		settings, err := client.TryFetchPrivacySettings(ctx, false)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("failed to get privacy settings: %s", err)))
+			return
+		}
+
+		response := map[string]interface{}{
+			"success": true,
+			"data": map[string]string{
+				"group_add":     string(settings.GroupAdd),
+				"last_seen":     string(settings.LastSeen),
+				"status":        string(settings.Status),
+				"profile":       string(settings.Profile),
+				"read_receipts": string(settings.ReadReceipts),
+				"online":        string(settings.Online),
+				"call_add":      string(settings.CallAdd),
+			},
+		}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
+	}
+}
+
+// SetPrivacySettings updates a privacy setting
+func (s *server) SetPrivacySettings() http.HandlerFunc {
+
+	type requestPrivacyStruct struct {
+		SettingType  string `json:"setting_type"`
+		SettingValue string `json:"setting_value"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		txtid := r.Context().Value("userinfo").(Values).Get("Id")
+
+		client := clientManager.GetWhatsmeowClient(txtid)
+
+		if client == nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New("no session"))
+			return
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		var t requestPrivacyStruct
+		err := decoder.Decode(&t)
+		if err != nil {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("could not decode Payload"))
+			return
+		}
+
+		// Validate required fields
+		if t.SettingType == "" || t.SettingValue == "" {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("missing setting_type or setting_value"))
+			return
+		}
+
+		// Map setting type string to types.PrivacySettingType
+		var settingType types.PrivacySettingType
+		switch t.SettingType {
+		case "groupadd":
+			settingType = types.PrivacySettingTypeGroupAdd
+		case "last":
+			settingType = types.PrivacySettingTypeLastSeen
+		case "status":
+			settingType = types.PrivacySettingTypeStatus
+		case "profile":
+			settingType = types.PrivacySettingTypeProfile
+		case "readreceipts":
+			settingType = types.PrivacySettingTypeReadReceipts
+		case "online":
+			settingType = types.PrivacySettingTypeOnline
+		case "calladd":
+			settingType = types.PrivacySettingTypeCallAdd
+		default:
+			s.Respond(w, r, http.StatusBadRequest, errors.New("invalid setting_type, must be one of: groupadd, last, status, profile, readreceipts, online, calladd"))
+			return
+		}
+
+		// Validate setting value
+		validValues := map[string]bool{
+			"all": true, "contacts": true, "contact_blacklist": true,
+			"match_last_seen": true, "known": true, "none": true,
+		}
+		if !validValues[t.SettingValue] {
+			s.Respond(w, r, http.StatusBadRequest, errors.New("invalid setting_value, must be one of: all, contacts, contact_blacklist, match_last_seen, known, none"))
+			return
+		}
+		settingValue := types.PrivacySetting(t.SettingValue)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		updatedSettings, err := client.SetPrivacySetting(ctx, settingType, settingValue)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("failed to set privacy setting: %s", err)))
+			return
+		}
+
+		response := map[string]interface{}{
+			"success": true,
+			"message": fmt.Sprintf("Privacy setting %s updated to %s", t.SettingType, t.SettingValue),
+			"data": map[string]string{
+				"group_add":     string(updatedSettings.GroupAdd),
+				"last_seen":     string(updatedSettings.LastSeen),
+				"status":        string(updatedSettings.Status),
+				"profile":       string(updatedSettings.Profile),
+				"read_receipts": string(updatedSettings.ReadReceipts),
+				"online":        string(updatedSettings.Online),
+				"call_add":      string(updatedSettings.CallAdd),
+			},
+		}
+		responseJson, err := json.Marshal(response)
+		if err != nil {
+			s.Respond(w, r, http.StatusInternalServerError, err)
+		} else {
+			s.Respond(w, r, http.StatusOK, string(responseJson))
+		}
 	}
 }

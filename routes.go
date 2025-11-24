@@ -82,6 +82,7 @@ func (s *server) routes() {
 	s.router.Handle("/session/disconnect", c.Then(s.Disconnect())).Methods("POST")
 	s.router.Handle("/session/logout", c.Then(s.Logout())).Methods("POST")
 	s.router.Handle("/session/status", c.Then(s.GetStatus())).Methods("GET")
+	s.router.Handle("/session/refresh", c.Then(s.SessionRefresh())).Methods("POST")
 	s.router.Handle("/session/qr", c.Then(s.GetQR())).Methods("GET")
 	s.router.Handle("/session/pairphone", c.Then(s.PairPhone())).Methods("POST")
 	s.router.Handle("/session/history", c.Then(s.RequestHistorySync())).Methods("GET")
@@ -135,12 +136,24 @@ func (s *server) routes() {
 	s.router.Handle("/chat/send/buttons", c.Then(s.SendButtons())).Methods("POST")
 	s.router.Handle("/chat/send/list", c.Then(s.SendList())).Methods("POST")
 	s.router.Handle("/chat/send/poll", c.Then(s.SendPoll())).Methods("POST")
+	s.router.Handle("/chat/send/carousel", c.Then(s.SendCarousel())).Methods("POST")
+	s.router.Handle("/chat/send/event", c.Then(s.SendEvent())).Methods("POST")
+	s.router.Handle("/chat/send/flow", c.Then(s.SendFlow())).Methods("POST")
+	s.router.Handle("/chat/send/link", c.Then(s.SendLink())).Methods("POST")
+	s.router.Handle("/chat/send/ptv", c.Then(s.SendPTV())).Methods("POST")
 	s.router.Handle("/chat/send/edit", c.Then(s.SendEditMessage())).Methods("POST")
 	s.router.Handle("/chat/history", c.Then(s.GetHistory())).Methods("GET")
 	s.router.Handle("/chat/request-unavailable-message", c.Then(s.RequestUnavailableMessage())).Methods("POST")
 	s.router.Handle("/chat/archive", c.Then(s.ArchiveChat())).Methods("POST")
+	s.router.Handle("/chat/pin", c.Then(s.PinChat())).Methods("POST")
 
-	s.router.Handle("/status/set/text", c.Then(s.SetStatusMessage())).Methods("POST")
+	s.router.Handle("/privacy/settings", c.Then(s.GetPrivacySettings())).Methods("GET")
+	s.router.Handle("/privacy/settings", c.Then(s.SetPrivacySettings())).Methods("POST")
+
+	s.router.Handle("/status/send/text", c.Then(s.SetStatusMessage())).Methods("POST")
+	s.router.Handle("/status/send/image", c.Then(s.SetStatusImage())).Methods("POST")
+	s.router.Handle("/status/send/video", c.Then(s.SetStatusVideo())).Methods("POST")
+	s.router.Handle("/status/send/audio", c.Then(s.SetStatusAudio())).Methods("POST")
 
 	s.router.Handle("/call/reject", c.Then(s.RejectCall())).Methods("POST")
 

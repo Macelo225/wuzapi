@@ -284,13 +284,9 @@ func callHookWithHmac(myurl string, payload map[string]string, userID string, en
 						postmap["timestamp"] = time.Now().Unix()
 					}
 
-					// Wrap in standard envelope for better compatibility
+					// Wrap in standard envelope
 					envelope := map[string]interface{}{
-						"event":        postmap["type"],
-						"instanceName": postmap["instanceName"],
-						"userID":       userID,
-						"timestamp":    postmap["timestamp"],
-						"data":         postmap,
+						"data": postmap,
 					}
 					body = envelope
 				}

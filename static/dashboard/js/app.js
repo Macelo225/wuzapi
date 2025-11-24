@@ -6120,16 +6120,13 @@ async function refreshInstance(instanceId, token) {
     // Check if request was successful
     if (data.success && data.data && data.data.refreshSuccess) {
       const details = data.data.Details || "Connection refreshed successfully";
-      showSuccess(`Instance refreshed successfully: ${details}`);
+      showSuccess(`Instance refreshed: ${details}`);
       updateAdmin();
     } else if (data.success && data.data) {
-      // Even if refreshSuccess is false, but we got valid data, show what happened
-      const details =
-        data.data.Details || "Refresh completed but may have issues";
-      showSuccess(`Instance refreshed successfully: ${details}`);
+      const details = data.data.Details || "Refresh completed";
+      showSuccess(`Instance refreshed: ${details}`);
       updateAdmin();
     } else {
-      // Only show error if the entire request failed
       const errorMsg = data.error || data.message || "Unknown refresh error";
       showError(`Failed to refresh instance: ${errorMsg}`);
     }

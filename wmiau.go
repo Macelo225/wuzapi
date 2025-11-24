@@ -187,6 +187,9 @@ func sendEventWithWebHook(mycli *MyClient, postmap map[string]interface{}, path 
 		return
 	}
 
+	// Add token to postmap
+	postmap["token"] = mycli.token
+
 	// Prepare webhook data
 	jsonData, err := json.Marshal(postmap)
 	if err != nil {
